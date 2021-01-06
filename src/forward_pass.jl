@@ -19,13 +19,9 @@ function final_cost(xₙ::AbstractArray{T,1})
 end
 ```
 """
-function forward_pass(
-    x̅ⁱ::AbstractMatrix{T},
-    u̅ⁱ::AbstractMatrix{T},
-    𝛿𝐮ᶠᶠs::AbstractMatrix{T},
-    𝐊s::AbstractArray{T,3},
-    dynamicsf::Function,
-) where {T}
+function forward_pass(x̅ⁱ::AbstractMatrix{T}, u̅ⁱ::AbstractMatrix{T},
+                      𝛿𝐮ᶠᶠs::AbstractMatrix{T}, 𝐊s::AbstractArray{T,3},
+                      dynamicsf::Function) where {T}
     N, input_size = size(u̅ⁱ)
     state_size = size(x̅ⁱ)[2]
     x̅ⁱ⁺¹ = zeros(T, N + 1, state_size)

@@ -12,7 +12,7 @@ m₁, m₂ = 1.0, 1.0         # Link masses
 δ = Iz2 + m₂ * r₂^2
 Δt = 0.01
 
-target_tool_loc = [1.25, 1.25]
+target_tool_loc = [1, 1]
 
 
 function InertiaMatrix(θ::AbstractVector{T}) where {T}
@@ -61,7 +61,8 @@ end
 
 # Simple
 function immediate_cost(x̅ᵢ::AbstractVector, u̅ᵢ::AbstractVector)
-    return norm(u̅ᵢ) + sum(x̅ᵢ) * 0.0
+    # return norm(u̅ᵢ) + sum(x̅ᵢ) * 0.0
+    return sum(u̅ᵢ) * 0.0 + norm(target_tool_loc .- x̅ᵢ[1:2])
 end
 
 

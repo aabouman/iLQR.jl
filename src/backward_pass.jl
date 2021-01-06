@@ -8,11 +8,8 @@ function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T}) where T
 end
 ```
 """
-function linearize_dynamics(
-    x̅::AbstractMatrix{T},
-    u̅::AbstractMatrix{T},
-    dynamicsf::Function,
-) where {T}
+function linearize_dynamics(x̅::AbstractMatrix{T}, u̅::AbstractMatrix{T},
+                            dynamicsf::Function) where {T}
     N, control_size = size(u̅)
     state_size = size(x̅)[2]
 
@@ -40,12 +37,9 @@ function immediate_cost(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T})
 end
 ```
 """
-function cost_quadratization(
-    x̅::AbstractMatrix{T},
-    u̅::AbstractMatrix{T},
-    immediate_cost::Function,
-    final_cost::Function,
-) where {T}
+function cost_quadratization(x̅::AbstractMatrix{T}, u̅::AbstractMatrix{T},
+                             immediate_cost::Function, final_cost::Function,
+                             ) where {T}
     N, control_size = size(u̅)
     state_size = size(x̅)[2]
 
@@ -93,15 +87,10 @@ end
 
 @doc raw"""
 """
-function optimal_controller_param(
-    𝐀ᵢ::AbstractMatrix{T},
-    𝐁ᵢ::AbstractMatrix{T},
-    𝐫ᵢ::AbstractMatrix{T},
-    𝐏ᵢ::AbstractMatrix{T},
-    𝐑ᵢ::AbstractMatrix{T},
-    𝐬ᵢ₊₁::AbstractMatrix{T},
-    𝐒ᵢ₊₁::AbstractMatrix{T},
-) where {T}
+function optimal_controller_param(𝐀ᵢ::AbstractMatrix{T}, 𝐁ᵢ::AbstractMatrix{T},
+                                  𝐫ᵢ::AbstractMatrix{T}, 𝐏ᵢ::AbstractMatrix{T},
+                                  𝐑ᵢ::AbstractMatrix{T}, 𝐬ᵢ₊₁::AbstractMatrix{T},
+                                  𝐒ᵢ₊₁::AbstractMatrix{T}) where {T}
     control_size, state_size = size(𝐏)
 
     𝐠ᵢ = 𝐫ᵢ + transpose(𝐁ᵢ) * 𝐬ᵢ₊₁
@@ -114,11 +103,8 @@ end
 
 @doc raw"""
 """
-function feedback_parameters(
-    𝐠ᵢ::AbstractMatrix{T},
-    𝐆ᵢ::AbstractMatrix{T},
-    𝐇ᵢ::AbstractMatrix{T},
-) where {T}
+function feedback_parameters(𝐠ᵢ::AbstractMatrix{T}, 𝐆ᵢ::AbstractMatrix{T},
+                             𝐇ᵢ::AbstractMatrix{T}) where {T}
     𝛿𝐮ᵢᶠᶠ = -inv(𝐇ᵢ) * 𝐠ᵢ
     𝐊ᵢ = -inv(𝐇ᵢ) * 𝐆ᵢ
     return (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ)
@@ -127,39 +113,27 @@ end
 
 @doc raw"""
 """
-function back_one_step(
-    𝐀ᵢ::AbstractMatrix{T},
-    𝐁ᵢ::AbstractMatrix{T},
-    𝑞ᵢ::AbstractVector{T},
-    𝐪ᵢ::AbstractVector{T},
-    𝐫ᵢ::AbstractVector{T},
-    𝐐ᵢ::AbstractMatrix{T},
-    𝐏ᵢ::AbstractMatrix{T},
-    𝐑ᵢ::AbstractMatrix{T},
-    𝑠ᵢ₊₁::AbstractVector{T},
-    𝐬ᵢ₊₁::AbstractVector{T},
-    𝐒ᵢ₊₁::AbstractMatrix{T},
-) where {T}
+function back_one_step(𝐀ᵢ::AbstractMatrix{T},
+                       𝐁ᵢ::AbstractMatrix{T},
+                       𝑞ᵢ::AbstractVector{T},
+                       𝐪ᵢ::AbstractVector{T},
+                       𝐫ᵢ::AbstractVector{T},
+                       𝐐ᵢ::AbstractMatrix{T},
+                       𝐏ᵢ::AbstractMatrix{T},
+                       𝐑ᵢ::AbstractMatrix{T},
+                       𝑠ᵢ₊₁::AbstractVector{T},
+                       𝐬ᵢ₊₁::AbstractVector{T},
+                       𝐒ᵢ₊₁::AbstractMatrix{T}) where {T}
     # Compute controller constants
     (𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ) = optimal_controller_param(𝐀ᵢ, 𝐁ᵢ, 𝐫ᵢ, 𝐏ᵢ, 𝐑ᵢ, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁)
     # Compute controller gains
     (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ) = feedback_parameters(𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ)
 
     𝑠ᵢ = (𝑞ᵢ + 𝑠ᵢ₊₁ + 1 / 2 * transpose(𝛿𝐮ᵢᶠᶠ) * 𝐇ᵢ * 𝛿𝐮ᵢᶠᶠ + transpose(𝛿𝐮ᵢᶠᶠ) * 𝐠ᵢ)
-    𝐬ᵢ = (
-        𝐪ᵢ +
-        transpose(𝐀ᵢ) * 𝐬ᵢ₊₁ +
-        transpose(𝐊ᵢ) * 𝐇ᵢ * 𝛿𝐮ᵢᶠᶠ +
-        transpose(𝐊ᵢ) * 𝐠ᵢ +
-        transpose(𝐆ᵢ) * 𝛿𝐮ᵢᶠᶠ
-    )
-    𝐒ᵢ = (
-        𝐐ᵢ +
-        transpose(𝐀ᵢ) * 𝐒ᵢ₊₁ * 𝐀ᵢ +
-        transpose(𝐊ᵢ) * 𝐇ᵢ * 𝐊ᵢ +
-        transpose(𝐊ᵢ) * 𝐆ᵢ +
-        transpose(𝐆ᵢ) * 𝐊ᵢ
-    )
+    𝐬ᵢ = (𝐪ᵢ + transpose(𝐀ᵢ) * 𝐬ᵢ₊₁ + transpose(𝐊ᵢ) * 𝐇ᵢ * 𝛿𝐮ᵢᶠᶠ +
+          transpose(𝐊ᵢ) * 𝐠ᵢ + transpose(𝐆ᵢ) * 𝛿𝐮ᵢᶠᶠ)
+    𝐒ᵢ = (𝐐ᵢ + transpose(𝐀ᵢ) * 𝐒ᵢ₊₁ * 𝐀ᵢ + transpose(𝐊ᵢ) * 𝐇ᵢ * 𝐊ᵢ +
+          transpose(𝐊ᵢ) * 𝐆ᵢ + transpose(𝐆ᵢ) * 𝐊ᵢ)
 
     return (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ, 𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ)
 end
@@ -187,13 +161,9 @@ function final_cost(xₙ::AbstractArray{T,1})
 end
 ```
 """
-function backward_pass(
-    x̅::AbstractMatrix{T},
-    u̅::AbstractMatrix{T},
-    dynamicsf::Function,
-    immediate_cost::Function,
-    final_cost::Function,
-) where {T}
+function backward_pass(x̅::AbstractMatrix{T}, u̅::AbstractMatrix{T},
+                       dynamicsf::Function, immediate_cost::Function,
+                       final_cost::Function) where {T}
     # Linearize dynamics around each step
     (𝐀s, 𝐁s) = linearize_dynamics(x̅, u̅, dynamicsf)
     # Compute the Quadratization of the cost at each time step
@@ -207,19 +177,17 @@ function backward_pass(
     (𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁) = (𝑞s[end], 𝐪s[end], 𝐐s[end])
     # Move backward
     for i = N:1
-        (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ, 𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ) = back_one_step(
-            𝐀s[i],
-            𝐁s[i],
-            𝑞s[i],
-            𝐪s[i],
-            𝐫s[i],
-            𝐐s[i],
-            𝐏s[i],
-            𝐑s[i],
-            𝑠ᵢ₊₁,
-            𝐬ᵢ₊₁,
-            𝐒ᵢ₊₁,
-        )
+        (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ, 𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ) = back_one_step(𝐀s[i],
+                                               𝐁s[i],
+                                               𝑞s[i],
+                                               𝐪s[i],
+                                               𝐫s[i],
+                                               𝐐s[i],
+                                               𝐏s[i],
+                                               𝐑s[i],
+                                               𝑠ᵢ₊₁,
+                                               𝐬ᵢ₊₁,
+                                               𝐒ᵢ₊₁)
         𝛿𝐮ᶠᶠs[i] .= 𝛿𝐮ᵢᶠᶠ
         𝐊s[i] .= 𝐊ᵢ
         (𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁) = (𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ)
