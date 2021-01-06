@@ -1,4 +1,4 @@
-# JuliaDynamics
+# iLQR.jl
 Environment for working on robot dynamics in Julia. To setup:
 
     $ cd path/to/JuliaDynamics
