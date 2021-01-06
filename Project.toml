@@ -1,0 +1,14 @@
+name = "iLQR"
+uuid = "98b70f6a-442d-40d0-b84f-5eaae8632f71"
+authors = ["Alexander A. Bouman <alex.bouman@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+RigidBodyDynamics = "366cf18f-59d5-5db9-a4de-86a9f6786172"
+RigidBodySim = "e61f16d8-a6b7-5689-8d03-627c2b27ebce"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
