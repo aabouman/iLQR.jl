@@ -7,7 +7,7 @@ include("2_link_helper_functions.jl")
 maximum_iterations = convert(Int64, 1e6)
 tolerance = 1e-6
 final_distance = .01
-num_steps = 100
+num_steps = 500
 state_traj = rand(num_steps+1, n_links * 2)
 last_state = state_traj[1, :]
 input_traj = rand(num_steps, n_links)
@@ -34,4 +34,4 @@ anim = @animate for t = 1:df:length(t)
     ylims!((-2, 2))
     # axis("tight")
 end
-gif(anim, "Driven_1Link_Spring.gif", fps = 20)
+gif(anim, "iLQR_2_link.gif", fps = 20)
