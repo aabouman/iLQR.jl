@@ -28,8 +28,6 @@ function forward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
     u̅ = zeros(T, N, input_size)
     x̅[1, :] .= x[1, :]
 
-    display(size(𝐊s))
-
     for k = 1:N
         δxᵢ = x̅[k, :] - x[k, :]
         u̅[k, :] .= u[k, :] + 𝛿𝐮ᶠᶠs[k, :] + 𝐊s[k,:,:] * δxᵢ

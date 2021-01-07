@@ -36,7 +36,7 @@ function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
         # println(u̅ⁱ⁺¹)
 
         # Check if we have met the tolerance for convergence
-        convert(Float64, norm(u̅ⁱ⁺¹ - u̅ⁱ)) <= tol && break
+        convert(Float64, sum((u̅ⁱ⁺¹ - u̅ⁱ).^2)) <= tol && break
         # Update the current trajectory and input estimates
         x̅ⁱ = x̅ⁱ⁺¹
         u̅ⁱ = u̅ⁱ⁺¹

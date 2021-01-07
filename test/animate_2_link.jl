@@ -24,7 +24,8 @@ t = [0.:convert(Float64, num_steps);]
                     final_cost; max_iter = maximum_iterations, tol = tolerance,
                     )
 
-df = 1
+println("Animating...")
+df = 10
 anim = @animate for t = 1:df:length(t)
     p4 = plot([0, l₁ * cos(x̅ᶠ[t, 1]), l₁ * cos(x̅ᶠ[t, 1]) + l₂ * cos(x̅ᶠ[t, 1] + x̅ᶠ[t, 2])],
               [0, l₁ * sin(x̅ᶠ[t, 1]), l₁ * sin(x̅ᶠ[t, 1]) + l₂ * sin(x̅ᶠ[t, 1] + x̅ᶠ[t, 2])],

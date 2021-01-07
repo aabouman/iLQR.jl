@@ -9,25 +9,22 @@ function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T}) where T
 end
 ```
 """
-function linearize_dynamics(x̅::AbstractMatrix{T}, u̅::AbstractMatrix{T},
+function linearize_dynamics(x::AbstractVector{T}, u::AbstractVector{T},
                             dynamicsf::Function) where {T}
-    N, control_size = size(u̅)
-    state_size = size(x̅)[2]
+    state_size = size(x)[1]; control_size = size(u)[1];
 
-    𝐀s = zeros(T, N, state_size, state_size)
-    𝐁s = zeros(T, N, state_size, control_size)
+    𝐀 = zeros(T, state_size, state_size)
+    𝐁 = zeros(T, state_size, control_size)
 
     # Declaring dynamics jacobian functions
-    A_func(x̅ᵢ, u̅ᵢ) = jacobian(x̅ᵢ -> dynamicsf(x̅ᵢ, u̅ᵢ), x̅ᵢ)
-    B_func(x̅ᵢ, u̅ᵢ) = jacobian(u̅ᵢ -> dynamicsf(x̅ᵢ, u̅ᵢ), u̅ᵢ)
+    A_func(x, u) = jacobian(x -> dynamicsf(x, u), x)
+    B_func(x, u) = jacobian(u -> dynamicsf(x, u), u)
 
-    for k = 1:N
-        # Computing jacobian around each point
-        𝐀s[k,:,:] .= A_func(x̅[k,:], u̅[k,:])
-        𝐁s[k,:,:] .= B_func(x̅[k,:], u̅[k,:])
-    end
+    # Computing jacobian around each point
+    𝐀 .= A_func(x, u)
+    𝐁 .= B_func(x, u)
 
-    return (𝐀s, 𝐁s)
+    return (𝐀, 𝐁)
 end
 
 
@@ -38,53 +35,57 @@ function immediate_cost(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T})
 end
 ```
 """
-function cost_quadratization(x̅::AbstractMatrix{T}, u̅::AbstractMatrix{T},
-                             immediate_cost::Function, final_cost::Function,
-                             ) where {T}
-    N, control_size = size(u̅)
-    state_size = size(x̅)[2]
+function immediate_cost_quadratization(x::AbstractVector{T},
+                                       u::AbstractVector{T},
+                                       immediate_cost::Function) where {T}
+    state_size = size(x)[1]; control_size = size(u)[1];
 
     # Notation copied from ETH lecture notes
-    𝑞s = zeros(T, N + 1)  # Cost along path
-    𝐪s = zeros(T, N + 1, state_size)  # Cost Jacobian wrt x
-    𝐫s = zeros(T, N, control_size)  # Cost Jacobian wrt u
-    𝐐s = zeros(T, N + 1, state_size, state_size)  # Cost Hessian wrt x, x
-    𝐏s = zeros(T, N, control_size, state_size)  # Cost Hessian wrt u, x
-    𝐑s = zeros(T, N, control_size, control_size)  # Cost Hessian wrt u, u
+    𝑞ᵢ = convert(T, 0.)  # Cost along path
+    𝐪ᵢ = zeros(T, state_size)  # Cost Jacobian wrt x
+    𝐫ᵢ = zeros(T, control_size)  # Cost Jacobian wrt u
+    𝐐ᵢ = zeros(T, state_size, state_size)  # Cost Hessian wrt x, x
+    𝐏ᵢ = zeros(T, control_size, state_size)  # Cost Hessian wrt u, x
+    𝐑ᵢ = zeros(T, control_size, control_size)  # Cost Hessian wrt u, u
 
     # Helper jacobain functions
-    ∂L∂x(x̅ᵢ, u̅ᵢ) = gradient(x̅ᵢ -> immediate_cost(x̅ᵢ, u̅ᵢ), x̅ᵢ)
-    ∂L∂u(x̅ᵢ, u̅ᵢ) = gradient(u̅ᵢ -> immediate_cost(x̅ᵢ, u̅ᵢ), u̅ᵢ)
-    ∂²L∂x²(x̅ᵢ, u̅ᵢ) = hessian(x̅ᵢ -> immediate_cost(x̅ᵢ, u̅ᵢ), x̅ᵢ)
-    ∂²L∂u∂x(x̅ᵢ, u̅ᵢ) = jacobian(x̅ᵢ -> ∂L∂u(x̅ᵢ, u̅ᵢ), x̅ᵢ)
-    ∂²L∂u²(x̅ᵢ, u̅ᵢ) = hessian(u̅ᵢ -> immediate_cost(x̅ᵢ, u̅ᵢ), u̅ᵢ)
-    ∂Φ∂x(x̅ᵢ) = gradient(x̅ᵢ -> final_cost(x̅ᵢ), x̅ᵢ)
-    ∂²Φ∂x²(x̅ᵢ) = hessian(x̅ᵢ -> final_cost(x̅ᵢ), x̅ᵢ)
+    ∂L∂x(x, u) = gradient(x -> immediate_cost(x, u), x)
+    ∂L∂u(x, u) = gradient(u -> immediate_cost(x, u), u)
+    ∂²L∂x²(x, u) = hessian(x -> immediate_cost(x, u), x)
+    ∂²L∂u∂x(x, u) = jacobian(x -> ∂L∂u(x, u), x)
+    ∂²L∂u²(x, u) = hessian(u -> immediate_cost(x, u), u)
 
-    for k = 1:N
-        # Cost along path
-        𝑞s[k] = immediate_cost(x̅[k,:], u̅[k,:])
-        # Cost gradient wrt x
-        𝐪s[k,:] .= ∂L∂x(x̅[k,:], u̅[k,:])
-        # Cost gradient wrt u
-        𝐫s[k,:] .= ∂L∂u(x̅[k,:], u̅[k,:])
-        # Cost Hessian wrt x, x
-        𝐐s[k,:,:] .= ∂²L∂x²(x̅[k,:], u̅[k,:])
-        # Cost Hessian wrt u, x
-        𝐏s[k,:,:] .= ∂²L∂u∂x(x̅[k,:], u̅[k,:])
-        # Cost Hessian wrt u, u
-        𝐑s[k,:,:] .= ∂²L∂u²(x̅[k,:], u̅[k,:])
-    end
+    𝑞ᵢ = immediate_cost(x, u)
+    𝐪ᵢ = ∂L∂x(x, u)        # Cost gradient wrt x
+    𝐫ᵢ = ∂L∂u(x, u)        # Cost gradient wrt u
+    𝐐ᵢ = ∂²L∂x²(x, u)      # Cost Hessian wrt x, x
+    𝐏ᵢ = ∂²L∂u∂x(x, u)     # Cost Hessian wrt u, x
+    𝐑ᵢ = ∂²L∂u²(x, u)      # Cost Hessian wrt u, u
+
+    return (𝑞ᵢ, 𝐪ᵢ, 𝐫ᵢ, 𝐐ᵢ, 𝐏ᵢ, 𝐑ᵢ)
+end
+
+
+function final_cost_quadratization(x::AbstractVector{T}, final_cost::Function) where {T}
+    state_size = size(x)[1];
+
+    # Notation copied from ETH lecture notes
+    𝑞ₙ = convert(T, 0.)  # Cost along path
+    𝐪ₙ = zeros(T, state_size)  # Cost Jacobian wrt x
+    𝐐ₙ = zeros(T, state_size, state_size)  # Cost Hessian wrt x, x
+
+    # Helper jacobain functions
+    ∂Φ∂x(x) = gradient(x -> final_cost(x), x)
+    ∂²Φ∂x²(x) = hessian(x -> final_cost(x), x)
+
     # Final cost
-    𝑞s[N+1] = final_cost(x̅[end, :])
+    𝑞ₙ = final_cost(x)
     # Final cost gradient wrt x
-    𝐪s[N+1, :] = ∂Φ∂x(x̅[end, :])
+    𝐪ₙ = ∂Φ∂x(x)
     # Final cost Hessian wrt x, x
-    𝐐s[N+1, :, :] = ∂²Φ∂x²(x̅[end, :])
+    𝐐ₙ = ∂²Φ∂x²(x)
 
-    # println(𝐏s)
-
-    return (𝑞s, 𝐪s, 𝐫s, 𝐐s, 𝐏s, 𝐑s)
+    return (𝑞ₙ, 𝐪ₙ, 𝐐ₙ)
 end
 
 
@@ -94,8 +95,6 @@ function optimal_controller_param(𝐀ᵢ::AbstractMatrix{T}, 𝐁ᵢ::AbstractM
                                   𝐫ᵢ::AbstractVector{T}, 𝐏ᵢ::AbstractMatrix{T},
                                   𝐑ᵢ::AbstractMatrix{T}, 𝐬ᵢ₊₁::AbstractVector{T},
                                   𝐒ᵢ₊₁::AbstractMatrix{T}) where {T}
-    control_size, state_size = size(𝐏ᵢ)
-
     𝐠ᵢ = 𝐫ᵢ + 𝐁ᵢ' * 𝐬ᵢ₊₁
     𝐆ᵢ = 𝐏ᵢ + 𝐁ᵢ' * 𝐒ᵢ₊₁ * 𝐀ᵢ
     𝐇ᵢ = 𝐑ᵢ + 𝐁ᵢ' * 𝐒ᵢ₊₁ * 𝐁ᵢ
@@ -111,8 +110,9 @@ function feedback_parameters(𝐠ᵢ::AbstractVector{T}, 𝐆ᵢ::AbstractMatrix
     # 𝛿𝐮ᵢᶠᶠ = - 𝐇ᵢ \ 𝐠ᵢ
     # 𝐊ᵢ = - 𝐇ᵢ \ 𝐆ᵢ
     # H_inv = regularized_persudo_inverse(𝐇ᵢ)
-    N = size(𝐇ᵢ)[1]
-    H_inv = inv(𝐇ᵢ + 0.01 * I(N))
+
+    n = size(𝐇ᵢ)[1]
+    H_inv = inv(𝐇ᵢ + 0.01 * I(n))
     𝛿𝐮ᵢᶠᶠ = - H_inv * 𝐠ᵢ
     𝐊ᵢ = - H_inv * 𝐆ᵢ
     return (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ)
@@ -136,23 +136,18 @@ end
 
 @doc raw"""
 """
-function back_one_step(𝐀ᵢ::AbstractMatrix{T}, 𝐁ᵢ::AbstractMatrix{T}, 𝑞ᵢ::T,
-                       𝐪ᵢ::AbstractVector{T}, 𝐫ᵢ::AbstractVector{T},
-                       𝐐ᵢ::AbstractMatrix{T}, 𝐏ᵢ::AbstractMatrix{T},
-                       𝐑ᵢ::AbstractMatrix{T}, 𝑠ᵢ₊₁::T, 𝐬ᵢ₊₁::AbstractVector{T},
-                       𝐒ᵢ₊₁::AbstractMatrix{T}) where {T}
-    # Compute controller constants
-    (𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ) = optimal_controller_param(𝐀ᵢ, 𝐁ᵢ, 𝐫ᵢ, 𝐏ᵢ, 𝐑ᵢ, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁)
-    # Compute controller gains
-    (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ) = feedback_parameters(𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ)
-
+function step_back(𝐀ᵢ::AbstractMatrix{T}, 𝑞ᵢ::T, 𝐪ᵢ::AbstractVector{T},
+                   𝐐ᵢ::AbstractMatrix{T}, 𝐠ᵢ::AbstractVector{T},
+                   𝐆ᵢ::AbstractMatrix{T}, 𝐇ᵢ::AbstractMatrix{T},
+                   𝛿𝐮ᵢᶠᶠ::AbstractVector{T}, 𝐊ᵢ::AbstractMatrix{T},
+                   𝑠ᵢ₊₁::T, 𝐬ᵢ₊₁::AbstractVector{T}, 𝐒ᵢ₊₁::AbstractMatrix{T}
+                   ) where {T}
     𝑠ᵢ = (𝑞ᵢ + 𝑠ᵢ₊₁ + .5 * 𝛿𝐮ᵢᶠᶠ' * 𝐇ᵢ * 𝛿𝐮ᵢᶠᶠ + 𝛿𝐮ᵢᶠᶠ' * 𝐠ᵢ)
     𝐬ᵢ = (𝐪ᵢ + 𝐀ᵢ' * 𝐬ᵢ₊₁ + 𝐊ᵢ' * 𝐇ᵢ * 𝛿𝐮ᵢᶠᶠ + 𝐊ᵢ' * 𝐠ᵢ + 𝐆ᵢ' * 𝛿𝐮ᵢᶠᶠ)
     𝐒ᵢ = (𝐐ᵢ + 𝐀ᵢ' * 𝐒ᵢ₊₁ * 𝐀ᵢ + 𝐊ᵢ' * 𝐇ᵢ * 𝐊ᵢ + 𝐊ᵢ' * 𝐆ᵢ + 𝐆ᵢ' * 𝐊ᵢ)
 
-    return (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ, 𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ)
+    return (𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ)
 end
-
 
 
 @doc raw"""
@@ -179,25 +174,37 @@ end
 function backward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
                        dynamicsf::Function, immediate_cost::Function,
                        final_cost::Function) where {T}
-    # Linearize dynamics around each step
-    (𝐀s, 𝐁s) = linearize_dynamics(x, u, dynamicsf)
-    # Compute the Quadratization of the cost at each time step
-    (𝑞s, 𝐪s, 𝐫s, 𝐐s, 𝐏s, 𝐑s) = cost_quadratization(x, u, immediate_cost, final_cost)
     # Grab all dimensions
-    N, control_size, state_size = size(𝐏s)
-    # Initialize matricies
-    𝛿𝐮ᶠᶠs = zeros(T, N, control_size)
-    𝐊s = zeros(T, N, control_size, state_size)
+    N, state_size = size(x); M, input_size = size(u);
+    @assert(N == M+1)
 
-    (𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁) = (𝑞s[end], 𝐪s[end,:], 𝐐s[end,:,:])
+    # Initialize matricies
+    𝛿𝐮ᶠᶠs = zeros(T, N-1, input_size)
+    𝐊s = zeros(T, N-1, input_size, state_size)
+
+    (𝑞ₙ, 𝐪ₙ, 𝐐ₙ) = final_cost_quadratization(x[N,:], final_cost)
+    (𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁) = (𝑞ₙ, 𝐪ₙ, 𝐐ₙ)
+
     # Move backward
-    for i = N:-1:1
-        (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ, 𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ) = back_one_step(𝐀s[i,:,:], 𝐁s[i,:,:], 𝑞s[i],
-                                               𝐪s[i,:], 𝐫s[i,:], 𝐐s[i,:,:],
-                                               𝐏s[i,:,:], 𝐑s[i,:,:],
-                                               𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁)
+    for i = (N-1):-1:1
+        (𝐀ᵢ, 𝐁ᵢ) = linearize_dynamics(x[i,:], u[i,:], dynamicsf)
+        # @assert(i!=N-11, map(display, [i, 𝐀ᵢ, 𝐁ᵢ]))
+
+        (𝑞ᵢ, 𝐪ᵢ, 𝐫ᵢ, 𝐐ᵢ, 𝐏ᵢ, 𝐑ᵢ) = immediate_cost_quadratization(x[i,:], u[i,:], immediate_cost)
+        (𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ) = optimal_controller_param(𝐀ᵢ, 𝐁ᵢ, 𝐫ᵢ, 𝐏ᵢ, 𝐑ᵢ, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁)
+        (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ) = feedback_parameters(𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ)
+
+        # @assert(i!=N-1, ["𝑞ᵢ, 𝐪ᵢ, 𝐫ᵢ, 𝐐ᵢ, 𝐏ᵢ, 𝐑ᵢ\n", map(display, [i, 𝑞ᵢ, 𝐪ᵢ, 𝐫ᵢ, 𝐐ᵢ, 𝐏ᵢ, 𝐑ᵢ])])
+        # @assert(i!=N-1, ["𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ\n", map(display, [i, 𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ])])
+        # @assert(i!=N-1, ["𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ\n", map(display, [i, 𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ])])
+
         𝛿𝐮ᶠᶠs[i,:] .= 𝛿𝐮ᵢᶠᶠ
         𝐊s[i,:,:] .= 𝐊ᵢ
+
+        (𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ) = step_back(𝐀ᵢ, 𝑞ᵢ, 𝐪ᵢ, 𝐐ᵢ, 𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ, 𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ,
+                                𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁)
+        # @assert(i!=N-1, ["𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ\n", map(display, [i, 𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ])])
+
         (𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁) = (𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ)
     end
 
