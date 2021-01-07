@@ -1,4 +1,5 @@
 using ForwardDiff: gradient, jacobian, hessian
+using LinearAlgebra: svd, Diagonal, inv, I
 
 """
 ```
@@ -22,8 +23,8 @@ function linearize_dynamics(x̅::AbstractMatrix{T}, u̅::AbstractMatrix{T},
 
     for k = 1:N
         # Computing jacobian around each point
-        𝐀s[k, :, :] .= A_func(x̅[k, :], u̅[k, :])
-        𝐁s[k, :, :] .= B_func(x̅[k, :], u̅[k, :])
+        𝐀s[k,:,:] .= A_func(x̅[k,:], u̅[k,:])
+        𝐁s[k,:,:] .= B_func(x̅[k,:], u̅[k,:])
     end
 
     return (𝐀s, 𝐁s)
@@ -62,24 +63,26 @@ function cost_quadratization(x̅::AbstractMatrix{T}, u̅::AbstractMatrix{T},
 
     for k = 1:N
         # Cost along path
-        𝑞s[k] = immediate_cost(x̅[k, :], u̅[k, :])
-        # Cost Jacobian wrt x
-        𝐪s[k, :] .= ∂L∂x(x̅[k, :], u̅[k, :])
-        # Cost Jacobian wrt u
-        𝐫s[k, :] .= ∂L∂u(x̅[k, :], u̅[k, :])
+        𝑞s[k] = immediate_cost(x̅[k,:], u̅[k,:])
+        # Cost gradient wrt x
+        𝐪s[k,:] .= ∂L∂x(x̅[k,:], u̅[k,:])
+        # Cost gradient wrt u
+        𝐫s[k,:] .= ∂L∂u(x̅[k,:], u̅[k,:])
         # Cost Hessian wrt x, x
-        𝐐s[k, :, :] .= ∂²L∂x²(x̅[k, :], u̅[k, :])
+        𝐐s[k,:,:] .= ∂²L∂x²(x̅[k,:], u̅[k,:])
         # Cost Hessian wrt u, x
-        𝐏s[k, :, :] .= ∂²L∂u∂x(x̅[k, :], u̅[k, :])
+        𝐏s[k,:,:] .= ∂²L∂u∂x(x̅[k,:], u̅[k,:])
         # Cost Hessian wrt u, u
-        𝐑s[k, :, :] .= ∂²L∂u²(x̅[k, :], u̅[k, :])
+        𝐑s[k,:,:] .= ∂²L∂u²(x̅[k,:], u̅[k,:])
     end
     # Final cost
     𝑞s[N+1] = final_cost(x̅[end, :])
-    # Final cost Jacobian wrt x
+    # Final cost gradient wrt x
     𝐪s[N+1, :] = ∂Φ∂x(x̅[end, :])
-    # Final cost Hessian wrt x
+    # Final cost Hessian wrt x, x
     𝐐s[N+1, :, :] = ∂²Φ∂x²(x̅[end, :])
+
+    # println(𝐏s)
 
     return (𝑞s, 𝐪s, 𝐫s, 𝐐s, 𝐏s, 𝐑s)
 end
@@ -88,14 +91,14 @@ end
 @doc raw"""
 """
 function optimal_controller_param(𝐀ᵢ::AbstractMatrix{T}, 𝐁ᵢ::AbstractMatrix{T},
-                                  𝐫ᵢ::AbstractMatrix{T}, 𝐏ᵢ::AbstractMatrix{T},
-                                  𝐑ᵢ::AbstractMatrix{T}, 𝐬ᵢ₊₁::AbstractMatrix{T},
+                                  𝐫ᵢ::AbstractVector{T}, 𝐏ᵢ::AbstractMatrix{T},
+                                  𝐑ᵢ::AbstractMatrix{T}, 𝐬ᵢ₊₁::AbstractVector{T},
                                   𝐒ᵢ₊₁::AbstractMatrix{T}) where {T}
-    control_size, state_size = size(𝐏)
+    control_size, state_size = size(𝐏ᵢ)
 
-    𝐠ᵢ = 𝐫ᵢ + transpose(𝐁ᵢ) * 𝐬ᵢ₊₁
-    𝐆ᵢ = 𝐏ᵢ + transpose(𝐁ᵢ) * 𝐒ᵢ₊₁ * 𝐀ᵢ
-    𝐇ᵢ = 𝐑ᵢ + transpose(𝐁ᵢ) * 𝐒ᵢ₊₁ * 𝐁ᵢ
+    𝐠ᵢ = 𝐫ᵢ + 𝐁ᵢ' * 𝐬ᵢ₊₁
+    𝐆ᵢ = 𝐏ᵢ + 𝐁ᵢ' * 𝐒ᵢ₊₁ * 𝐀ᵢ
+    𝐇ᵢ = 𝐑ᵢ + 𝐁ᵢ' * 𝐒ᵢ₊₁ * 𝐁ᵢ
 
     return (𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ)
 end
@@ -103,37 +106,49 @@ end
 
 @doc raw"""
 """
-function feedback_parameters(𝐠ᵢ::AbstractMatrix{T}, 𝐆ᵢ::AbstractMatrix{T},
+function feedback_parameters(𝐠ᵢ::AbstractVector{T}, 𝐆ᵢ::AbstractMatrix{T},
                              𝐇ᵢ::AbstractMatrix{T}) where {T}
-    𝛿𝐮ᵢᶠᶠ = -inv(𝐇ᵢ) * 𝐠ᵢ
-    𝐊ᵢ = -inv(𝐇ᵢ) * 𝐆ᵢ
+    # 𝛿𝐮ᵢᶠᶠ = - 𝐇ᵢ \ 𝐠ᵢ
+    # 𝐊ᵢ = - 𝐇ᵢ \ 𝐆ᵢ
+    # H_inv = regularized_persudo_inverse(𝐇ᵢ)
+    N = size(𝐇ᵢ)[1]
+    H_inv = inv(𝐇ᵢ + 0.01 * I(N))
+    𝛿𝐮ᵢᶠᶠ = - H_inv * 𝐠ᵢ
+    𝐊ᵢ = - H_inv * 𝐆ᵢ
     return (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ)
+end
+
+
+function regularized_persudo_inverse(matrix::AbstractMatrix{T}; reg=1e-5) where {T}
+    @assert !any(isnan, matrix)
+
+    SVD = svd(matrix)
+
+    SVD.S[ SVD.S .< 0 ] .= 0.0        #truncate negative values...
+    diag_s_inv = zeros(T, (size(SVD.V)[1], size(SVD.U)[2]))
+    diag_s_inv[1:length(SVD.S), 1:length(SVD.S)] .= Diagonal(1.0 / (SVD.S .+ reg))
+
+    regularized_matrix = SVD.V * diag_s_inv * transpose(SVD.U)
+    # println(regularized_matrix)
+    return regularized_matrix
 end
 
 
 @doc raw"""
 """
-function back_one_step(𝐀ᵢ::AbstractMatrix{T},
-                       𝐁ᵢ::AbstractMatrix{T},
-                       𝑞ᵢ::AbstractVector{T},
-                       𝐪ᵢ::AbstractVector{T},
-                       𝐫ᵢ::AbstractVector{T},
-                       𝐐ᵢ::AbstractMatrix{T},
-                       𝐏ᵢ::AbstractMatrix{T},
-                       𝐑ᵢ::AbstractMatrix{T},
-                       𝑠ᵢ₊₁::AbstractVector{T},
-                       𝐬ᵢ₊₁::AbstractVector{T},
+function back_one_step(𝐀ᵢ::AbstractMatrix{T}, 𝐁ᵢ::AbstractMatrix{T}, 𝑞ᵢ::T,
+                       𝐪ᵢ::AbstractVector{T}, 𝐫ᵢ::AbstractVector{T},
+                       𝐐ᵢ::AbstractMatrix{T}, 𝐏ᵢ::AbstractMatrix{T},
+                       𝐑ᵢ::AbstractMatrix{T}, 𝑠ᵢ₊₁::T, 𝐬ᵢ₊₁::AbstractVector{T},
                        𝐒ᵢ₊₁::AbstractMatrix{T}) where {T}
     # Compute controller constants
     (𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ) = optimal_controller_param(𝐀ᵢ, 𝐁ᵢ, 𝐫ᵢ, 𝐏ᵢ, 𝐑ᵢ, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁)
     # Compute controller gains
     (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ) = feedback_parameters(𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ)
 
-    𝑠ᵢ = (𝑞ᵢ + 𝑠ᵢ₊₁ + 1 / 2 * transpose(𝛿𝐮ᵢᶠᶠ) * 𝐇ᵢ * 𝛿𝐮ᵢᶠᶠ + transpose(𝛿𝐮ᵢᶠᶠ) * 𝐠ᵢ)
-    𝐬ᵢ = (𝐪ᵢ + transpose(𝐀ᵢ) * 𝐬ᵢ₊₁ + transpose(𝐊ᵢ) * 𝐇ᵢ * 𝛿𝐮ᵢᶠᶠ +
-          transpose(𝐊ᵢ) * 𝐠ᵢ + transpose(𝐆ᵢ) * 𝛿𝐮ᵢᶠᶠ)
-    𝐒ᵢ = (𝐐ᵢ + transpose(𝐀ᵢ) * 𝐒ᵢ₊₁ * 𝐀ᵢ + transpose(𝐊ᵢ) * 𝐇ᵢ * 𝐊ᵢ +
-          transpose(𝐊ᵢ) * 𝐆ᵢ + transpose(𝐆ᵢ) * 𝐊ᵢ)
+    𝑠ᵢ = (𝑞ᵢ + 𝑠ᵢ₊₁ + .5 * 𝛿𝐮ᵢᶠᶠ' * 𝐇ᵢ * 𝛿𝐮ᵢᶠᶠ + 𝛿𝐮ᵢᶠᶠ' * 𝐠ᵢ)
+    𝐬ᵢ = (𝐪ᵢ + 𝐀ᵢ' * 𝐬ᵢ₊₁ + 𝐊ᵢ' * 𝐇ᵢ * 𝛿𝐮ᵢᶠᶠ + 𝐊ᵢ' * 𝐠ᵢ + 𝐆ᵢ' * 𝛿𝐮ᵢᶠᶠ)
+    𝐒ᵢ = (𝐐ᵢ + 𝐀ᵢ' * 𝐒ᵢ₊₁ * 𝐀ᵢ + 𝐊ᵢ' * 𝐇ᵢ * 𝐊ᵢ + 𝐊ᵢ' * 𝐆ᵢ + 𝐆ᵢ' * 𝐊ᵢ)
 
     return (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ, 𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ)
 end
@@ -161,37 +176,33 @@ function final_cost(xₙ::AbstractArray{T,1})
 end
 ```
 """
-function backward_pass(x̅::AbstractMatrix{T}, u̅::AbstractMatrix{T},
+function backward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
                        dynamicsf::Function, immediate_cost::Function,
                        final_cost::Function) where {T}
     # Linearize dynamics around each step
-    (𝐀s, 𝐁s) = linearize_dynamics(x̅, u̅, dynamicsf)
+    (𝐀s, 𝐁s) = linearize_dynamics(x, u, dynamicsf)
     # Compute the Quadratization of the cost at each time step
-    (𝑞s, 𝐪s, 𝐫s, 𝐐s, 𝐏s, 𝐑s) = cost_quadratization(x̅, u̅, immediate_cost, final_cost)
+    (𝑞s, 𝐪s, 𝐫s, 𝐐s, 𝐏s, 𝐑s) = cost_quadratization(x, u, immediate_cost, final_cost)
     # Grab all dimensions
     N, control_size, state_size = size(𝐏s)
     # Initialize matricies
     𝛿𝐮ᶠᶠs = zeros(T, N, control_size)
     𝐊s = zeros(T, N, control_size, state_size)
 
-    (𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁) = (𝑞s[end], 𝐪s[end], 𝐐s[end])
+    (𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁) = (𝑞s[end], 𝐪s[end,:], 𝐐s[end,:,:])
     # Move backward
-    for i = N:1
-        (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ, 𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ) = back_one_step(𝐀s[i],
-                                               𝐁s[i],
-                                               𝑞s[i],
-                                               𝐪s[i],
-                                               𝐫s[i],
-                                               𝐐s[i],
-                                               𝐏s[i],
-                                               𝐑s[i],
-                                               𝑠ᵢ₊₁,
-                                               𝐬ᵢ₊₁,
-                                               𝐒ᵢ₊₁)
-        𝛿𝐮ᶠᶠs[i] .= 𝛿𝐮ᵢᶠᶠ
-        𝐊s[i] .= 𝐊ᵢ
+    for i = N:-1:1
+        (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ, 𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ) = back_one_step(𝐀s[i,:,:], 𝐁s[i,:,:], 𝑞s[i],
+                                               𝐪s[i,:], 𝐫s[i,:], 𝐐s[i,:,:],
+                                               𝐏s[i,:,:], 𝐑s[i,:,:],
+                                               𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁)
+        𝛿𝐮ᶠᶠs[i,:] .= 𝛿𝐮ᵢᶠᶠ
+        𝐊s[i,:,:] .= 𝐊ᵢ
         (𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁) = (𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ)
     end
+
+    @assert !any(isnan, 𝛿𝐮ᶠᶠs)
+    @assert !any(isnan, 𝐊s)
 
     return (𝛿𝐮ᶠᶠs, 𝐊s)
 end

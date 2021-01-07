@@ -6,11 +6,16 @@ include("2_link_helper_functions.jl")
 
 maximum_iterations = convert(Int64, 1e6)
 tolerance = 1e-6
-final_distance = .01
-num_steps = 500
-state_traj = rand(num_steps+1, n_links * 2)
-last_state = state_traj[1, :]
-input_traj = rand(num_steps, n_links)
+num_steps = 900
+
+input_traj = zeros(num_steps, n_links)
+state_traj = zeros(num_steps+1, n_links*2)
+state_traj[1,:] = [π/4., -π/2., 0., 0.] #rand(4)
+
+for i = 1:num_steps
+      state_traj[i+1,:] .= dynamicsf(state_traj[i,:], input_traj[i, :])
+end
+
 
 # Build vector of time steps
 t = [0.:convert(Float64, num_steps);]
@@ -18,8 +23,6 @@ t = [0.:convert(Float64, num_steps);]
 (x̅ᶠ, u̅ᶠ) = iLQR.fit(state_traj, input_traj, dynamicsf, immediate_cost,
                     final_cost; max_iter = maximum_iterations, tol = tolerance,
                     )
-
-
 
 df = 1
 anim = @animate for t = 1:df:length(t)

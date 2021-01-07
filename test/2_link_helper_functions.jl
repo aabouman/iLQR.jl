@@ -2,24 +2,23 @@ using LinearAlgebra: norm, I
 using ForwardDiff: jacobian
 
 n_links = 2
-Iz1, Iz2 = 1 / 10, 1 / 10   # Link inertias
-l₁, l₂ = 1.0, 1.0         # Link lengths
+l₁, l₂ = sqrt(2.)/2., sqrt(2.)/2.         # Link lengths
 r₁, r₂ = 0.5 * l₁, 0.5 * l₂   # Length from joint to link's COM
 m₁, m₂ = 1.0, 1.0         # Link masses
+Iz1, Iz2 = 1.0/12.0*m₁*l₁^2, 1.0/12.0*m₂*l₂^2   # Link inertias
+
 
 α = Iz1 + Iz2 + m₁ * r₁^2 + m₂ * (l₁^2 + r₂^2)
 β = m₂ * l₁ * r₂
 δ = Iz2 + m₂ * r₂^2
 Δt = 0.01
 
-target_tool_loc = [1, 1]
+target_tool_loc = [1.2, 0.6]
 
 
 function InertiaMatrix(θ::AbstractVector{T}) where {T}
-    retmat = [
-        α+2*β*cos(θ[2]) δ+β*cos(θ[2])
-        δ+β*cos(θ[2]) δ
-    ]
+    retmat = [α+2*β*cos(θ[2]) δ+β*cos(θ[2])
+              δ+β*cos(θ[2]) δ]
     return retmat
 end
 
@@ -59,10 +58,21 @@ function dynamicsf(state::AbstractVector, ext_wrench::AbstractVector)
 end
 
 
-# Simple
 function immediate_cost(x̅ᵢ::AbstractVector, u̅ᵢ::AbstractVector)
     # return norm(u̅ᵢ) + sum(x̅ᵢ) * 0.0
-    return sum(u̅ᵢ) * 0.0 + norm(target_tool_loc .- x̅ᵢ[1:2])
+    # return sum(u̅ᵢ) * 0.0 + norm(target_tool_loc .- x̅ᵢ[1:2])
+    state_size = length(x̅ᵢ)
+    θ₁, θ₂ = x̅ᵢ[1:(state_size÷2)]
+    x = l₁ * cos(θ₁) + l₂ * cos(θ₁ + θ₂)
+    y = l₁ * sin(θ₁) + l₂ * sin(θ₁ + θ₂)
+    euclidean_penalty = norm(target_tool_loc .- [x, y])
+
+    Q = [0. 0. 0. 0.; 0. 0. 0. 0.; 0. 0. 1. 0.; 0. 0. 0. 1.]
+    velocity_penalty = x̅ᵢ' * Q * x̅ᵢ
+
+    torque_penalty = norm(u̅ᵢ) * 1000.0
+
+    return euclidean_penalty + velocity_penalty + torque_penalty
 end
 
 
@@ -70,7 +80,7 @@ function final_cost(x̅ₙ::AbstractVector)
     state_size = length(x̅ₙ)
     θ₁, θ₂ = x̅ₙ[1:(state_size÷2)]
     x = l₁ * cos(θ₁) + l₂ * cos(θ₁ + θ₂)
-    y = l₁ * cos(θ₁) + l₂ * cos(θ₁ + θ₂)
+    y = l₁ * sin(θ₁) + l₂ * sin(θ₁ + θ₂)
 
     return norm(target_tool_loc .- [x, y])
 end

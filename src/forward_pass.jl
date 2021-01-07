@@ -19,19 +19,28 @@ function final_cost(xₙ::AbstractArray{T,1})
 end
 ```
 """
-function forward_pass(x̅ⁱ::AbstractMatrix{T}, u̅ⁱ::AbstractMatrix{T},
+function forward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
                       𝛿𝐮ᶠᶠs::AbstractMatrix{T}, 𝐊s::AbstractArray{T,3},
                       dynamicsf::Function) where {T}
-    N, input_size = size(u̅ⁱ)
-    state_size = size(x̅ⁱ)[2]
-    x̅ⁱ⁺¹ = zeros(T, N + 1, state_size)
-    u̅ⁱ⁺¹ = zeros(T, N, input_size)
-    x̅ⁱ⁺¹[1, :] .= x̅ⁱ[1, :]
+    N, input_size = size(u)
+    state_size = size(x)[2]
+    x̅ = zeros(T, N+1, state_size)
+    u̅ = zeros(T, N, input_size)
+    x̅[1, :] .= x[1, :]
 
-    for n = 1:N
-        u̅ⁱ⁺¹[n, :] .= u̅ⁱ[n, :] + 𝛿𝐮ᶠᶠs[n, :] + 𝐊s[n, :, :] * (x̅ⁱ⁺¹[n, :] - x̅ⁱ[n, :])
-        x̅ⁱ⁺¹[n+1, :] .= dynamicsf(x̅ⁱ⁺¹[n, :], u̅ⁱ⁺¹[n, :])
+    display(size(𝐊s))
+
+    for k = 1:N
+        δxᵢ = x̅[k, :] - x[k, :]
+        u̅[k, :] .= u[k, :] + 𝛿𝐮ᶠᶠs[k, :] + 𝐊s[k,:,:] * δxᵢ
+        x̅[k+1, :] .= dynamicsf(x̅[k, :], u̅[k, :])
+
+        @assert(!any(isnan, x̅[k, :]), [k, x̅[k, :]])
+        @assert(!any(isnan, x̅[k+1, :]), [k, display(u̅[1:20, :])])
     end
 
-    return (x̅ⁱ⁺¹, u̅ⁱ⁺¹)
+    @assert !any(isnan, u̅)
+    @assert !any(isnan, x̅)
+
+    return (x̅, u̅)
 end
