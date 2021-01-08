@@ -2,8 +2,9 @@ using ForwardDiff: gradient, jacobian, hessian
 using LinearAlgebra: svd, Diagonal, inv, I
 
 """
+Propegates the system dynamics
 ```
-function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T}) where T
+function dynamicsf(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T}) where T
     ...
     return xᵢ₊₁
 end
@@ -104,7 +105,7 @@ end
 
 
 """
-Computes the feedback_parameters 
+Computes the feedback_parameters
 """
 function feedback_parameters(𝐠ᵢ::AbstractVector{T}, 𝐆ᵢ::AbstractMatrix{T},
                              𝐇ᵢ::AbstractMatrix{T}) where {T}
