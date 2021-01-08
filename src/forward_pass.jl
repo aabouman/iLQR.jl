@@ -33,8 +33,8 @@ function forward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
         u̅[k, :] .= u[k, :] + 𝛿𝐮ᶠᶠs[k, :] + 𝐊s[k,:,:] * δxᵢ
         x̅[k+1, :] .= dynamicsf(x̅[k, :], u̅[k, :])
 
-        @assert(!any(isnan, x̅[k, :]), [k, x̅[k, :]])
-        @assert(!any(isnan, x̅[k+1, :]), [k, display(u̅[1:20, :])])
+        @assert(!any(isnan, u̅[k, :]), [k, u̅[k, :]])
+        @assert(!any(isnan, x̅[k+1, :]), [k, x̅[k+1, :]])
     end
 
     @assert !any(isnan, u̅)

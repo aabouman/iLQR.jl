@@ -109,10 +109,11 @@ function feedback_parameters(𝐠ᵢ::AbstractVector{T}, 𝐆ᵢ::AbstractMatrix
                              𝐇ᵢ::AbstractMatrix{T}) where {T}
     # 𝛿𝐮ᵢᶠᶠ = - 𝐇ᵢ \ 𝐠ᵢ
     # 𝐊ᵢ = - 𝐇ᵢ \ 𝐆ᵢ
-    # H_inv = regularized_persudo_inverse(𝐇ᵢ)
+    # TODO: Test for when this becomes unstable
+    H_inv = regularized_persudo_inverse(𝐇ᵢ)
 
-    n = size(𝐇ᵢ)[1]
-    H_inv = inv(𝐇ᵢ + 0.01 * I(n))
+    # n = size(𝐇ᵢ)[1]
+    # H_inv = inv(𝐇ᵢ + 0.01 * I(n))
     𝛿𝐮ᵢᶠᶠ = - H_inv * 𝐠ᵢ
     𝐊ᵢ = - H_inv * 𝐆ᵢ
     return (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ)
@@ -129,7 +130,6 @@ function regularized_persudo_inverse(matrix::AbstractMatrix{T}; reg=1e-5) where 
     diag_s_inv[1:length(SVD.S), 1:length(SVD.S)] .= Diagonal(1.0 / (SVD.S .+ reg))
 
     regularized_matrix = SVD.V * diag_s_inv * transpose(SVD.U)
-    # println(regularized_matrix)
     return regularized_matrix
 end
 
@@ -188,28 +188,17 @@ function backward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
     # Move backward
     for i = (N-1):-1:1
         (𝐀ᵢ, 𝐁ᵢ) = linearize_dynamics(x[i,:], u[i,:], dynamicsf)
-        # @assert(i!=N-11, map(display, [i, 𝐀ᵢ, 𝐁ᵢ]))
-
         (𝑞ᵢ, 𝐪ᵢ, 𝐫ᵢ, 𝐐ᵢ, 𝐏ᵢ, 𝐑ᵢ) = immediate_cost_quadratization(x[i,:], u[i,:], immediate_cost)
         (𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ) = optimal_controller_param(𝐀ᵢ, 𝐁ᵢ, 𝐫ᵢ, 𝐏ᵢ, 𝐑ᵢ, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁)
         (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ) = feedback_parameters(𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ)
-
-        # @assert(i!=N-1, ["𝑞ᵢ, 𝐪ᵢ, 𝐫ᵢ, 𝐐ᵢ, 𝐏ᵢ, 𝐑ᵢ\n", map(display, [i, 𝑞ᵢ, 𝐪ᵢ, 𝐫ᵢ, 𝐐ᵢ, 𝐏ᵢ, 𝐑ᵢ])])
-        # @assert(i!=N-1, ["𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ\n", map(display, [i, 𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ])])
-        # @assert(i!=N-1, ["𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ\n", map(display, [i, 𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ])])
 
         𝛿𝐮ᶠᶠs[i,:] .= 𝛿𝐮ᵢᶠᶠ
         𝐊s[i,:,:] .= 𝐊ᵢ
 
         (𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ) = step_back(𝐀ᵢ, 𝑞ᵢ, 𝐪ᵢ, 𝐐ᵢ, 𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ, 𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ,
                                 𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁)
-        # @assert(i!=N-1, ["𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ\n", map(display, [i, 𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ])])
-
         (𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁) = (𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ)
     end
-
-    @assert !any(isnan, 𝛿𝐮ᶠᶠs)
-    @assert !any(isnan, 𝐊s)
 
     return (𝛿𝐮ᶠᶠs, 𝐊s)
 end

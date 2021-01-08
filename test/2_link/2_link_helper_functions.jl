@@ -13,7 +13,7 @@ Iz1, Iz2 = 1.0/12.0*m₁*l₁^2, 1.0/12.0*m₂*l₂^2   # Link inertias
 δ = Iz2 + m₂ * r₂^2
 Δt = 0.01
 
-target_tool_loc = [0.6, 0.0]
+target_tool_loc = [-0.6, 0.4]
 
 
 function InertiaMatrix(θ::AbstractVector{T}) where {T}
@@ -37,7 +37,7 @@ function CoriolisMatrix(θ::AbstractVector{T}, θ̇::AbstractVector{T}) where {T
 end
 
 
-function dynamicsf(state::AbstractVector, ext_wrench::AbstractVector)
+function dynamicsf(state::AbstractVector, input::AbstractVector)
     n = length(state) ÷ 2
     θ = state[1:n]
     θ̇ = state[n+1:end]
@@ -51,7 +51,7 @@ function dynamicsf(state::AbstractVector, ext_wrench::AbstractVector)
     ]
     mat2 = [zeros(n, n); inv(M_mat)]
 
-    state_dot = mat1 * state + mat2 * ext_wrench
+    state_dot = mat1 * state + mat2 * input
     new_state = state + Δt * state_dot
 
     return new_state
@@ -66,13 +66,15 @@ function immediate_cost(x̅ᵢ::AbstractVector, u̅ᵢ::AbstractVector)
     x = l₁ * cos(θ₁) + l₂ * cos(θ₁ + θ₂)
     y = l₁ * sin(θ₁) + l₂ * sin(θ₁ + θ₂)
     euclidean_penalty = sum((target_tool_loc .- [x, y]).^2)
-
+    # Penalty on arm's velocity
     Q = [0. 0. 0. 0.; 0. 0. 0. 0.; 0. 0. 1. 0.; 0. 0. 0. 1.]
     velocity_penalty = x̅ᵢ' * Q * x̅ᵢ
-
+    # Penalty on toruqe input
     torque_penalty = sum(u̅ᵢ.^2)
 
-    return euclidean_penalty * 1.0 + torque_penalty * 1.0
+    total_penalty = (euclidean_penalty * 1.0 + torque_penalty * 100.0 +
+                     velocity_penalty * 1.0)
+    return total_penalty
 end
 
 
@@ -83,5 +85,5 @@ function final_cost(x̅ₙ::AbstractVector)
     y = l₁ * sin(θ₁) + l₂ * sin(θ₁ + θ₂)
     euclidean_penalty = sum((target_tool_loc .- [x, y]).^2)
 
-    return euclidean_penalty * 1.0
+    return euclidean_penalty * 10000.0
 end
