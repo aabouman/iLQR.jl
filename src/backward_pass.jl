@@ -28,7 +28,7 @@ function linearize_dynamics(x::AbstractVector{T}, u::AbstractVector{T},
 end
 
 
-@doc raw"""
+"""
 ```julia
 function immediate_cost(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T})
     return sum(uᵢ.^2)  # for example
@@ -89,7 +89,7 @@ function final_cost_quadratization(x::AbstractVector{T}, final_cost::Function) w
 end
 
 
-@doc raw"""
+"""
 """
 function optimal_controller_param(𝐀ᵢ::AbstractMatrix{T}, 𝐁ᵢ::AbstractMatrix{T},
                                   𝐫ᵢ::AbstractVector{T}, 𝐏ᵢ::AbstractMatrix{T},
@@ -103,7 +103,8 @@ function optimal_controller_param(𝐀ᵢ::AbstractMatrix{T}, 𝐁ᵢ::AbstractM
 end
 
 
-@doc raw"""
+"""
+Computes the feedback_parameters 
 """
 function feedback_parameters(𝐠ᵢ::AbstractVector{T}, 𝐆ᵢ::AbstractMatrix{T},
                              𝐇ᵢ::AbstractMatrix{T}) where {T}
@@ -134,7 +135,7 @@ function regularized_persudo_inverse(matrix::AbstractMatrix{T}; reg=1e-5) where 
 end
 
 
-@doc raw"""
+"""
 """
 function step_back(𝐀ᵢ::AbstractMatrix{T}, 𝑞ᵢ::T, 𝐪ᵢ::AbstractVector{T},
                    𝐐ᵢ::AbstractMatrix{T}, 𝐠ᵢ::AbstractVector{T},
@@ -150,7 +151,7 @@ function step_back(𝐀ᵢ::AbstractMatrix{T}, 𝑞ᵢ::T, 𝐪ᵢ::AbstractVect
 end
 
 
-@doc raw"""
+"""
 
 ```julia
 function dynamics(xᵢ::AbstractArray{T,1}, uᵢ::AbstractArray{T,1})

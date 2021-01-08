@@ -17,6 +17,11 @@ using iLQR
 # )
 
 Documenter.makedocs(
-    sitename = "iLQR.jl Documentation",
-    repo = "https://github.com/aabouman/iLQR.jl"
+    sitename = "iLQR.jl",
+    repo = "https://github.com/aabouman/iLQR.jl",
+    pages = [
+        "index.md",
+        "Documentation" => "documentation.md",
+        "Tutorial" => "tutorial.md"
+    ]
 )

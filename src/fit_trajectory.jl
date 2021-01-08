@@ -1,5 +1,16 @@
 @doc raw"""
-fit usig iLQR
+
+fit trajectory using Iterative Linear Quadratic Regulator (iLQR).
+
+# Arguments
+- `x_init::AbstractMatrix{T}`: state trajectory, `length(x_init) == N + 1`
+- `u_init::AbstractMatrix{T}`: control input trajectory, `length(u_init) == N`
+- `dynamicsf::Function`: forward descrete dynamics ``f(x_k, u_k)``
+- `immediate_cost::Function`: forward descrete dynamics ``f(x_k, u_k)``
+- `final_cost::Function`: forward descrete dynamics ``f(x_k, u_k)``
+- `max_iter::Int64 = 100`: forward descrete dynamics ``f(x_k, u_k)``
+- `tol::Float64 = 1e-6`: tolerance to test for input trajectory convergence. Converged when ``\lVert u_{k+1} - u_k \rVert``
+
 """
 function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
              dynamicsf::Function, immediate_cost::Function,
@@ -20,26 +31,14 @@ function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
 
         𝛿𝐮ᶠᶠs, 𝐊s = backward_pass(x̅ⁱ::AbstractMatrix{T}, u̅ⁱ::AbstractMatrix{T},
                                   dynamicsf::Function, immediate_cost::Function,
-                                  final_cost::Function,
-                                  )
-        # println("Backward Pass Outputs")
-        # println(any(isnan, 𝛿𝐮ᶠᶠs))
-        # println(any(isnan, 𝐊s))
-
+                                  final_cost::Function)
         x̅ⁱ⁺¹, u̅ⁱ⁺¹ = forward_pass(x̅ⁱ, u̅ⁱ, 𝛿𝐮ᶠᶠs, 𝐊s, dynamicsf)
-        # println("Forward Pass Outputs")
-        # println(any(isnan, x̅ⁱ⁺¹))
-        # println(any(isnan, u̅ⁱ⁺¹))
-        # println(x̅ⁱ⁺¹)
-        # println(u̅ⁱ⁺¹)
 
         # Check if we have met the tolerance for convergence
         convert(Float64, sum((u̅ⁱ⁺¹ - u̅ⁱ).^2)) <= tol && break
         # Update the current trajectory and input estimates
         x̅ⁱ = x̅ⁱ⁺¹
         u̅ⁱ = u̅ⁱ⁺¹
-
-        # println(total_cost(x̅ⁱ, u̅ⁱ))
     end
 
     return (x̅ⁱ, u̅ⁱ)
