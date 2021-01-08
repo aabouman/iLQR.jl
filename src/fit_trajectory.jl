@@ -1,5 +1,3 @@
-using LinearAlgebra: norm
-
 @doc raw"""
 fit usig iLQR
 """

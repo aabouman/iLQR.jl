@@ -1,5 +1,6 @@
-using iLQR
 using Documenter
+# push!(LOAD_PATH,"../src/")
+using iLQR
 
 # Documenter.makedocs(
 #     root = "./",
