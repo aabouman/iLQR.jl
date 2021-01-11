@@ -18,30 +18,18 @@ function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
 
     iter = 0
     for iter = 1:max_iter
-        # println(x̅ⁱ[end,:])
-
         𝛿𝐮ᶠᶠs, 𝐊s = backward_pass(x̅ⁱ::AbstractMatrix{T}, u̅ⁱ::AbstractMatrix{T},
                                   dynamicsf::Function, immediate_cost::Function,
                                   final_cost::Function,
                                   )
-        # println("Backward Pass Outputs")
-        # println(any(isnan, 𝛿𝐮ᶠᶠs))
-        # println(any(isnan, 𝐊s))
 
         x̅ⁱ⁺¹, u̅ⁱ⁺¹ = forward_pass(x̅ⁱ, u̅ⁱ, 𝛿𝐮ᶠᶠs, 𝐊s, dynamicsf)
-        # println("Forward Pass Outputs")
-        # println(any(isnan, x̅ⁱ⁺¹))
-        # println(any(isnan, u̅ⁱ⁺¹))
-        # println(x̅ⁱ⁺¹)
-        # println(u̅ⁱ⁺¹)
 
         # Check if we have met the tolerance for convergence
         convert(Float64, sum((u̅ⁱ⁺¹ - u̅ⁱ).^2)) <= tol && break
         # Update the current trajectory and input estimates
         x̅ⁱ = x̅ⁱ⁺¹
         u̅ⁱ = u̅ⁱ⁺¹
-
-        # println(total_cost(x̅ⁱ, u̅ⁱ))
     end
 
     return (x̅ⁱ, u̅ⁱ)
