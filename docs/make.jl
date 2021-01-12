@@ -11,10 +11,10 @@ Documenter.makedocs(
         # "Tutorial" => "tutorial.md"
     ]
 )
-
-deploydocs(
-    repo = "github.com/m3g/PDBTools.git",
-    target = "build",
-    branch = "gh-pages",
-    # versions = ["stable" => "v^", "v#.#" ],
-)
+# 
+# deploydocs(
+#     repo = "github.com/m3g/PDBTools.git",
+#     target = "build",
+#     branch = "gh-pages",
+#     # versions = ["stable" => "v^", "v#.#" ],
+# )
