@@ -13,7 +13,17 @@ Iz1, Iz2 = 1.0/12.0*m₁*l₁^2, 1.0/12.0*m₂*l₂^2   # Link inertias
 δ = Iz2 + m₂ * r₂^2
 Δt = 0.01
 
-target_tool_loc = [0.6, 0.0]
+target_tool_loc = [0.6, -0.5]
+
+
+function InverseKinematics(workspace_target::AbstractVector{T}) where {T}
+    x, y = workspace_target
+
+    q₂ = acos((x^2 + y^2 - l₁^2 - l₂^2) / (2 * l₁ * l₂))
+    q₁ = atan(y, x) - atan(l₂ * sin(q₂), l₁ + l₂ * cos(q₂))
+
+    return [q₁, q₂]
+end
 
 
 function InertiaMatrix(θ::AbstractVector{T}) where {T}
@@ -63,9 +73,9 @@ function immediate_cost(x̅ᵢ::AbstractVector, u̅ᵢ::AbstractVector)
     # return sum(u̅ᵢ.^2) * 0.0 + sum((target_tool_loc .- x̅ᵢ[1:2]).^2)
     state_size = length(x̅ᵢ)
     θ₁, θ₂ = x̅ᵢ[1:(state_size÷2)]
-    x = l₁ * cos(θ₁) + l₂ * cos(θ₁ + θ₂)
-    y = l₁ * sin(θ₁) + l₂ * sin(θ₁ + θ₂)
-    euclidean_penalty = sum((target_tool_loc .- [x, y]).^2)
+    target_joint_loc = InverseKinematics(target_tool_loc)
+
+    euclidean_penalty = sum((target_joint_loc .- [θ₁, θ₂]).^2)
 
     Q = [0. 0. 0. 0.; 0. 0. 0. 0.; 0. 0. 1. 0.; 0. 0. 0. 1.]
     velocity_penalty = x̅ᵢ' * Q * x̅ᵢ
@@ -79,9 +89,9 @@ end
 function final_cost(x̅ₙ::AbstractVector)
     state_size = length(x̅ₙ)
     θ₁, θ₂ = x̅ₙ[1:(state_size÷2)]
-    x = l₁ * cos(θ₁) + l₂ * cos(θ₁ + θ₂)
-    y = l₁ * sin(θ₁) + l₂ * sin(θ₁ + θ₂)
-    euclidean_penalty = sum((target_tool_loc .- [x, y]).^2)
+    target_joint_loc = InverseKinematics(target_tool_loc)
+
+    euclidean_penalty = sum((target_joint_loc .- [θ₁, θ₂]).^2)
 
     return euclidean_penalty * 1.0
 end

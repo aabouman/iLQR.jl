@@ -10,8 +10,7 @@ num_steps = 900
 
 input_traj = zeros(num_steps, n_links)
 state_traj = zeros(num_steps+1, n_links*2)
-state_traj[1,:] = [π/4., -π/2., 0., 0.] #rand(4)
-
+state_traj[1,:] = [.1, -.1, 0., 0.] #rand(4)
 for i = 1:num_steps
       state_traj[i+1,:] .= dynamicsf(state_traj[i,:], input_traj[i, :])
 end
@@ -38,4 +37,4 @@ anim = @animate for t = 1:df:length(t)
     ylims!((-2, 2))
     # axis("tight")
 end
-gif(anim, "iLQR_2_link.gif", fps = 20)
+gif(anim, "iLQR_2_link_quad_4.gif", fps = 20)
