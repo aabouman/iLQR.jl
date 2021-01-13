@@ -17,9 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v1.0.0
       - name: Setup Julia environment
-          uses: julia-actions/setup-julia@latest
-            with:
-              version: ${{ matrix.julia-version }}
+        uses: julia-actions/setup-julia@latest
+          with:
+            version: ${{ matrix.julia-version }}
       - name: Install dependencies
           run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Build and deploy
