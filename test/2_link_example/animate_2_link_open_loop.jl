@@ -33,4 +33,5 @@ anim = @animate for t = 1:df:length(t)
     ylims!((-2, 2))
     # axis("tight")
 end
-gif(anim, "openloop_2_link.gif", fps = 20)
+save_loc = joinpath(dirname(@__FILE__),"../figures/openloop_2_link.gif")
+gif(anim, save_loc, fps = 20)

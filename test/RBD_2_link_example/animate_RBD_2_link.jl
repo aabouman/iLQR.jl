@@ -1,12 +1,12 @@
 using iLQR
-using Plots
-using Plots.PlotMeasures
 
-include("2_link_helper_functions.jl")
+target_pose = [0, 0, 0, .5, .25, .6, 1., .3]
+
+include("RBD_helper_functions.jl")
 
 maximum_iterations = convert(Int64, 1e6)
 tolerance = 1e-6
-num_steps = 900
+num_steps = 1000
 
 input_traj = zeros(num_steps, n_links)
 state_traj = zeros(num_steps+1, n_links*2)

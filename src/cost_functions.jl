@@ -1,5 +1,3 @@
-# TODO:
-
 @doc raw"""
 Returns a simple `final_cost` function that is just the weighted euclidean
 distance from the specified tool location to a target location.
