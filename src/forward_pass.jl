@@ -1,5 +1,3 @@
-# prev_cost = Inf
-
 @doc raw"""
 `forward_pass(x, u, 𝛿𝐮ᶠᶠs, 𝐊s, prev_cost, dynamicsf, immediate_cost, final_cost)`
 

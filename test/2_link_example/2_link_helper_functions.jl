@@ -46,24 +46,35 @@ function CoriolisMatrix(θ::AbstractVector{T}, θ̇::AbstractVector{T}) where {T
     return C
 end
 
+function dynamicsf(x_n::AbstractVector, u::AbstractVector)
 
-function dynamicsf(state::AbstractVector, ext_wrench::AbstractVector)
-    n = length(state) ÷ 2
-    θ = state[1:n]
-    θ̇ = state[n+1:end]
+    function continuous_dynamics(state::AbstractVector, ext_wrench::AbstractVector)
+        n = length(state) ÷ 2
+        θ = state[1:n]
+        θ̇ = state[n+1:end]
 
-    M_mat = InertiaMatrix(θ)
-    C_mat = CoriolisMatrix(θ, θ̇)
+        M_mat = InertiaMatrix(θ)
+        C_mat = CoriolisMatrix(θ, θ̇ )
 
-    mat1 = [
-        zeros(n, n) I(2)
-        zeros(n, n) -M_mat\C_mat
-    ]
-    mat2 = [zeros(n, n); inv(M_mat)]
+        mat1 = [
+            zeros(n, n) I(2)
+            zeros(n, n) -M_mat\C_mat
+        ]
+        mat2 = [zeros(n, n); inv(M_mat)]
 
-    state_dot = mat1 * state + mat2 * ext_wrench
-    new_state = state + Δt * state_dot
+        state_dot = mat1 * state + mat2 * ext_wrench
+        # new_state = state + Δt * state_dot
 
+        return state_dot
+    end
+
+    # RK 4 integration
+    k1 = Δt * continuous_dynamics(x_n, u)
+    k2 = Δt * continuous_dynamics(x_n+k1/2, u)
+    k3 = Δt * continuous_dynamics(x_n+k2/2, u)
+    k4 = Δt * continuous_dynamics(x_n+k3, u)
+
+    new_state = (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
     return new_state
 end
 
