@@ -1,4 +1,6 @@
 [deps]
 Attitude = "8b3d34c0-dc4a-4a06-a8c8-4215f240a648"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 RigidBodyDynamics = "366cf18f-59d5-5db9-a4de-86a9f6786172"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 iLQR = "98b70f6a-442d-40d0-b84f-5eaae8632f71"
