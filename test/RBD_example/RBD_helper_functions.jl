@@ -36,7 +36,7 @@ function dynamics(x::AbstractVector{T}, u::AbstractVector{T}) where T
 
     # now we convert it to a state for RBD
     state = statecache[T]
-    copyto!(state,[q_from_p(p); x[4:end]])
+    copyto!(state, [q_from_p(p); x[4:end]])
 
     # get the dynamics for v (this state is the same for both)
     M = Array(mass_matrix(state))
