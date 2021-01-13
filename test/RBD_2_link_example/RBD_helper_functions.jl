@@ -1,5 +1,5 @@
 using RigidBodyDynamics, Attitude
-
+using LinearAlgebra: Diagonal
 
 # Load up model URDF
 urdf = joinpath(dirname(@__FILE__) ,"../urdf/2Dof_arm.urdf")
@@ -62,7 +62,6 @@ function dynamicsf(x::AbstractVector, u::AbstractVector)
             return [q̇;v̇]
         end
     end
-
     # RK 4 integration
     k1 = Δt * continuous_dynamics(x, u)
     k2 = Δt * continuous_dynamics(x + k1/2, u)
@@ -79,11 +78,12 @@ Immediate cost function, evaluated after each time step in the trajectory
 """
 function immediate_cost(x̅ᵢ::AbstractVector, u̅ᵢ::AbstractVector)
     pos = x̅ᵢ[1:8]
+    # Build weight matrix
+    orr_cost = [100.,100.,100.]; pos_cost = [1.,1.,1.]; jo_cost = [10.,10.];
+    Q = Diagonal([orr_cost; pos_cost; jo_cost])
 
-    euclidean_penalty = sum((target_pose .- pos).^2)
-
-    # Q = [0. 0. 0. 0.; 0. 0. 0. 0.; 0. 0. 1. 0.; 0. 0. 0. 1.]
-    # velocity_penalty = x̅ᵢ' * Q * x̅ᵢ
+    δx = (target_pose .- pos)
+    euclidean_penalty = δx' * Q * δx
 
     torque_penalty = sum(u̅ᵢ.^2)
 
@@ -96,8 +96,12 @@ Immediate cost function, evaluated after each time step in the trajectory
 """
 function final_cost(x̅ₙ::AbstractVector)
     pos = x̅ₙ[1:8]
+    # Build weight matrix
+    orr_cost = [100.,100.,100.]; pos_cost = [1.,1.,1.]; jo_cost = [10.,10.];
+    Q = Diagonal([orr_cost; pos_cost; jo_cost])
 
-    euclidean_penalty = sum((target_pose .- pos).^2)
+    δx = (target_pose .- pos)
+    euclidean_penalty = δx' * Q * δx
 
-    return euclidean_penalty * 10000.0
+    return euclidean_penalty * 100000.0
 end
