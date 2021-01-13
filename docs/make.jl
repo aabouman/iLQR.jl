@@ -2,15 +2,16 @@ using Documenter
 using iLQR
 
 
-Documenter.makedocs(
-    sitename = "iLQR.jl",
-    repo = "https://github.com/aabouman/iLQR.jl",
-    pages = [
-        "Home" => "index.md",
-        # "Documentation" => "documentation.md",
-        # "Tutorial" => "tutorial.md"
-    ]
-)
+# Documenter.makedocs(
+#     sitename = "iLQR.jl",
+#     repo = "https://github.com/aabouman/iLQR.jl",
+#     pages = [
+#         "Home" => "index.md",
+#         # "Documentation" => "documentation.md",
+#         # "Tutorial" => "tutorial.md"
+#     ]
+# )
+makedocs()
 deploydocs(
     repo = "https://github.com/aabouman/iLQR.jl",
 )
