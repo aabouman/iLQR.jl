@@ -16,8 +16,6 @@ makedocs(
     repo = "https://github.com/aabouman/iLQR.jl",
     pages = [
             "Home" => "index.md",
-    #         # "Documentation" => "documentation.md",
-    #         # "Tutorial" => "tutorial.md"
         ]
 )
 deploydocs(
