@@ -1,25 +1,54 @@
 # prev_cost = Inf
 
 @doc raw"""
+`forward_pass(x, u, 𝛿𝐮ᶠᶠs, 𝐊s, prev_cost, dynamicsf, immediate_cost, final_cost)`
 
+Perform iterativer LQR to compute optimal input and corresponding state
+trajectory.
+
+# Arguments
+- `x::AbstractMatrix{T}`: see output of [`linearize_dynamics(x, u, dynamicsf)`](@ref)
+- `u::AbstractMatrix{T}`: see output of [`linearize_dynamics(x, u, dynamicsf)`](@ref)
+- `𝛿𝐮ᶠᶠs::AbstractMatrix{T}`: see output of [`backward_pass(x, u, dynamicsf, immediate_cost, final_cost)`](@ref)
+- `𝐊s::AbstractArray{T,3}`: see output of [`backward_pass(x, u, dynamicsf, immediate_cost, final_cost)`](@ref)
+- `dynamicsf::Function`: dynamic function, steps the system forward
+- `immediate_cost::Function`: Cost after each step
+- `final_cost::Function`: Cost after final step
+
+The `dynamicsf` steps the system forward (``x_{i+1} = f(x_i, u_i)``). The
+function expects input of the form:
 ```julia
-function dynamics(xᵢ::AbstractArray{T,1}, uᵢ::AbstractArray{T,1})
+function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T}) where T
     ...
     return xᵢ₊₁
 end
 ```
 
+The `immediate_cost` function expect input of the form:
 ```julia
-function immediate_cost(x::AbstractArray{T,2}, u::AbstractArray{T,2})
-    sum(u.^2)  # for example
+function immediate_cost(x::AbstractVector{T}, u::AbstractVector{T})
+    return sum(u.^2) + sum(target_state - x.^2)  # for example
+end
+```
+!!! note
+    It is important that the function `immediate_cost` be an explict function
+    of both `x` and `u` (due to issues using `ForwardDiff` Package). If you want
+    to make `immediate_cost` practically only dependent on `u` with the following
+
+    ```julia
+    function immediate_cost(x::AbstractVector{T}, u::AbstractVector{T})
+        return sum(u.^2) + sum(x) * 0.0  # Only dependent on u
+    end
+    ```
+
+The `final_cost` function expect input of the form:
+```julia
+function final_cost(x::AbstractVector{T})
+    return sum(target_state - x.^2)  # for example
 end
 ```
 
-```julia
-function final_cost(xₙ::AbstractArray{T,1})
-    sum((some_target_point - xₙ).^2)  # Euclidean distance at end, for example
-end
-```
+Returns the optimal trajectory ``(x̅, u̅)``
 """
 function forward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
                       𝛿𝐮ᶠᶠs::AbstractMatrix{T}, 𝐊s::AbstractArray{T,3},
@@ -62,7 +91,55 @@ end
 
 
 @doc raw"""
-fit usig iLQR
+`fit(x_init, u_init, dynamicsf, immediate_cost, final_cost; max_iter=100, tol=1e-6)`
+
+Perform iterativer LQR to compute optimal input and corresponding state
+trajectory.
+
+# Arguments
+- `x_init::AbstractMatrix{T}`: see output of [`linearize_dynamics(x, u, dynamicsf)`](@ref)
+- `u_init::AbstractMatrix{T}`: see output of [`linearize_dynamics(x, u, dynamicsf)`](@ref)
+- `dynamicsf::Function`: dynamic function, steps the system forward
+- `immediate_cost::Function`: Cost after each step
+- `final_cost::Function`: Cost after final step
+- `max_iter::Int64=100`: Maximum number of forward/backward passes to make
+- `tol::Float64=1e-6`: Specifies the tolerance at which to consider the input
+trajectory has converged
+
+The `dynamicsf` steps the system forward (``x_{i+1} = f(x_i, u_i)``). The
+function expects input of the form:
+```julia
+function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T}) where T
+    ...
+    return xᵢ₊₁
+end
+```
+
+The `immediate_cost` function expect input of the form:
+```julia
+function immediate_cost(x::AbstractVector{T}, u::AbstractVector{T})
+    return sum(u.^2) + sum(target_state - x.^2)  # for example
+end
+```
+!!! note
+    It is important that the function `immediate_cost` be an explict function
+    of both `x` and `u` (due to issues using `ForwardDiff` Package). If you want
+    to make `immediate_cost` practically only dependent on `u` with the following
+
+    ```julia
+    function immediate_cost(x::AbstractVector{T}, u::AbstractVector{T})
+        return sum(u.^2) + sum(x) * 0.0  # Only dependent on u
+    end
+    ```
+
+The `final_cost` function expect input of the form:
+```julia
+function final_cost(x::AbstractVector{T})
+    return sum(target_state - x.^2)  # for example
+end
+```
+
+Returns the optimal trajectory ``(x̅, u̅)``
 """
 function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
              dynamicsf::Function, immediate_cost::Function,
@@ -70,9 +147,7 @@ function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
              ) where {T}
     x̅ⁱ = x_init; u̅ⁱ = u_init
     N, state_size = size(x̅ⁱ); M, input_size = size(u̅ⁱ)
-    @assert(N == M + 1,
-            "size(x_init)[2] == size(u_init)[1], (# of states is 1 more than # of inputs in trajectory)"
-            )
+    @assert(N == M + 1, "size(x_init)[2] == size(u_init)[1], (# of states is 1 more than # of inputs in trajectory)")
     total_cost = total_cost_generator(immediate_cost, final_cost)
 
     prev_cost = Inf; new_cost = NaN
@@ -98,7 +173,42 @@ function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
     return (x̅ⁱ, u̅ⁱ)
 end
 
+@doc raw"""
+`backward_pass(x, u, dynamicsf, immediate_cost, final_cost)`
 
+Computes feedforward and feedback gains (``𝛿𝐮ᵢᶠᶠ`` and ``𝐊ᵢ``).
+
+# Arguments
+- `immediate_cost::Function`: Cost after each step
+- `final_cost::Function`: Cost after final step
+
+The `immediate_cost` function expect input of the form:
+```julia
+function immediate_cost(x::AbstractVector{T}, u::AbstractVector{T})
+    return sum(u.^2) + sum(target_state - x.^2)  # for example
+end
+```
+!!! note
+    It is important that the function `immediate_cost` be an explict function
+    of both `x` and `u` (due to issues using `ForwardDiff` Package). If you want
+    to make `immediate_cost` practically only dependent on `u` with the following
+
+    ```julia
+    function immediate_cost(x::AbstractVector{T}, u::AbstractVector{T})
+        return sum(u.^2) + sum(x) * 0.0  # Only dependent on u
+    end
+    ```
+
+The `final_cost` function expect input of the form:
+```julia
+function final_cost(x::AbstractVector{T})
+    return sum(target_state - x.^2)  # for example
+end
+```
+
+Returns a function `total_cost` which computes the total cost of a state and
+input trajectory.
+"""
 function total_cost_generator(immediate_cost::Function, final_cost::Function)
     function total_cost(x̅ⁱ, u̅ⁱ)
         N = size(u̅ⁱ)[1]

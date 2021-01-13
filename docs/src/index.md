@@ -16,6 +16,10 @@ iLQR.fit
 
 ## Forward Rollout
 
+```@docs
+iLQR.forward_pass
+```
+
 ## Backward Pass
 
 ```@docs

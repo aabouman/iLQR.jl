@@ -13,7 +13,7 @@ linearizes the function `dynamicsf` around the point `x` and `u`.
 
 The `dynamicsf` steps the system forward (``x_{i+1} = f(x_i, u_i)``). The
 function expects input of the form:
-    
+
 ```julia
 function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T}) where T
     ...
@@ -61,6 +61,7 @@ function immediate_cost(x::AbstractVector{T}, u::AbstractVector{T})
     return sum(u.^2) + sum(target_state - x.^2)  # for example
 end
 ```
+
 !!! note
     It is important that the function `immediate_cost` be an explict function
     of both `x` and `u` (due to issues using `ForwardDiff` Package). If you want
@@ -76,9 +77,7 @@ Returns the matricies `(𝑞ᵢ, 𝐪ᵢ, 𝐫ᵢ, 𝐐ᵢ, 𝐏ᵢ, 𝐑ᵢ)` d
 
 ``𝑞ᵢ = L(xᵢ,uᵢ)``, ``𝐪ᵢ = \frac{∂L(xᵢ,uᵢ)}{∂x}``, ``𝐫ᵢ = \frac{∂L(xᵢ,uᵢ)}{∂u}``,
 ``𝐐ᵢ = \frac{∂^2 L(xᵢ,uᵢ)}{∂x^2}``, ``𝐏ᵢ = \frac{∂^2 L(xᵢ,uᵢ)}{∂x ∂u}``,
-``𝐑ᵢ = \frac{∂^2 L(xᵢ,uᵢ)}{∂u^2}``,
-
-
+``𝐑ᵢ = \frac{∂^2 L(xᵢ,uᵢ)}{∂u^2}``
 """
 function immediate_cost_quadratization(x::AbstractVector{T},
                                        u::AbstractVector{T},
@@ -190,7 +189,7 @@ end
 @doc raw"""
 `feedback_parameters(𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ)`
 
-Computes feedforward and feedback gains (``𝛿𝐮ᵢᶠᶠ`` and ``𝐊ᵢ``).
+Computes feedforward and feedback gains, ``(𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ)``.
 
 # Arguments
 - `𝐠ᵢ::AbstractVector{T}`: see output of [`optimal_controller_param(𝐀ᵢ, 𝐁ᵢ, 𝐫ᵢ, 𝐏ᵢ, 𝐑ᵢ, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁)`](@ref)
@@ -254,9 +253,7 @@ backward.
 - `𝐬ᵢ₊₁::AbstractVector{T}`: Rollback parameter
 - `𝐒ᵢ₊₁::AbstractMatrix{T}`: Rollback parameter
 
-Returns the next-step-back's rollback parameters:
-
-``𝑠ᵢ``, ``𝐬ᵢ``, ``𝐒ᵢ``
+Returns the next-step-back's rollback parameters, ``(𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ)``
 
 Because ``𝐇ᵢ`` can be poorly conditioned, the regularized inverse of the matrix
 is computed instead of the true inverse.
