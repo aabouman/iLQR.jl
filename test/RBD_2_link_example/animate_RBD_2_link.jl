@@ -4,7 +4,7 @@ using MeshCatMechanisms
 # set simulation parameters- length of time step, # of steps
 Δt = 0.01; num_steps = 1000;
 # target pose is size 8 (3 orr, 3 pos, 2 joint)
-target_pose = [0., 0., 0., .5, .25, .6, 1., .3]
+target_pose = [0., 0., 0., 5., 1., 2., 1., .3]
 
 # add in helper functions
 include("RBD_helper_functions.jl")
@@ -16,7 +16,7 @@ maximum_iterations = convert(Int64, 1e6); tolerance = 1e-6;
 input_traj = zeros(num_steps, length(target_pose))
 state_traj = zeros(num_steps+1, length(target_pose)*2)
 # Set inital configuration
-state_traj[1,:] = RBD_to_iLQR_state([configuration(state);velocity(state)])
+state_traj[1,:] = RBD_to_iLQR_state(mech_state_to_vec(state))
 for i = 1:num_steps
       state_traj[i+1,:] .= dynamicsf(state_traj[i,:], input_traj[i, :])
 end

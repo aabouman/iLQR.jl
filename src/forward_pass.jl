@@ -155,12 +155,10 @@ function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
         x̅ⁱ⁺¹, u̅ⁱ⁺¹, new_cost = forward_pass(x̅ⁱ, u̅ⁱ, 𝛿𝐮ᶠᶠs, 𝐊s, prev_cost,
                                             dynamicsf, immediate_cost,
                                             final_cost)
+        println("Iteration: ", iter, "\t\tTotal Cost: ", new_cost)
         @assert(prev_cost > new_cost); prev_cost = new_cost
 
         # Check if we have met the tolerance for convergence
-        display(size(u̅ⁱ))
-        display(size(u̅ⁱ⁺¹))
-
         convert(Float64, sum((u̅ⁱ⁺¹ - u̅ⁱ).^2)) <= tol && break
 
         # Update the current trajectory and input estimates
