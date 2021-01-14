@@ -1,5 +1,8 @@
 using iLQR
 using MeshCatMechanisms
+using MeshCat
+using GeometryTypes
+using ColorTypes
 
 # set simulation parameters- length of time step, # of steps
 Δt = 0.01; num_steps = 1000;
@@ -41,5 +44,8 @@ v_RBD_lol = [x_RBD[i,:] for i in 1:size(x_RBD)[1]]
 
 println("Animating...")
 mvis = MechanismVisualizer(mechanism, URDFVisuals(urdf));
+# setobject!(mvis[:ghost], URDFVisuals(urdf2))
+setobject!(mvis[:ghost], HyperRectangle(Vec(4.5, 0.5, 1.5), Vec(1., 1., 1.)))
 open(mvis)
+# open(mvis2)
 MeshCatMechanisms.animate(mvis, ts, q_RBD_lol; realtimerate = 1.);

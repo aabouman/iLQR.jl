@@ -1,11 +1,17 @@
 using RigidBodyDynamics, Attitude
 using LinearAlgebra: Diagonal
 
+
 # Load up model URDF
 urdf = joinpath(dirname(@__FILE__) ,"../urdf/2Dof_arm.urdf")
 mechanism = parse_urdf(urdf, gravity = [0.; 0.; 0.], floating = true)
 state = MechanismState(mechanism)
 set_configuration!(state, [0.,0.,0.,1,.5,.75,1.,0.,0.])
+# # Load up ghost URDF
+urdf2 = joinpath(dirname(@__FILE__) ,"../urdf/2Dof_arm_ghost.urdf")
+# mechanism2 = parse_urdf(urdf, gravity = [0.; 0.; 0.], floating = true)
+# state2 = MechanismState(mechanism2)
+# set_configuration!(state2, iLQR_to_RBD_state(target_pose))
 
 
 """
