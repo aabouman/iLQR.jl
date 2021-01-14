@@ -47,5 +47,10 @@ mvis = MechanismVisualizer(mechanism, URDFVisuals(urdf));
 # setobject!(mvis[:ghost], URDFVisuals(urdf2))
 setobject!(mvis[:ghost], HyperRectangle(Vec(4.5, 0.5, 1.5), Vec(1., 1., 1.)))
 open(mvis)
+# set_configuration!(mvis, configuration())
 # open(mvis2)
+
+# set_configuration!(mvis, [0.,0.,0.,1,.5,.75,1.,0.,0.])
+sleep(15)
+
 MeshCatMechanisms.animate(mvis, ts, q_RBD_lol; realtimerate = 1.);

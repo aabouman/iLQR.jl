@@ -91,7 +91,10 @@ function immediate_cost(x̅ᵢ::AbstractVector, u̅ᵢ::AbstractVector)
     δx = (target_pose .- pos)
     euclidean_penalty = δx' * Q * δx
 
-    torque_penalty = sum(u̅ᵢ.^2)
+    orr_tor_cost = [1.,1.,1.]; pos_tor_cost = [100.,100.,100.]; jo_tor_cost = [10.,10.];
+    R = Diagonal([orr_tor_cost;pos_tor_cost;jo_tor_cost])
+    # torque_penalty = sum(u̅ᵢ.^2)
+    torque_penalty = u̅ᵢ' * R * u̅ᵢ
 
     return euclidean_penalty * 10.0 + torque_penalty * 1.0
 end
@@ -103,7 +106,7 @@ Immediate cost function, evaluated after each time step in the trajectory
 function final_cost(x̅ₙ::AbstractVector)
     pos = x̅ₙ[1:8]
     # Build weight matrix
-    orr_cost = [100.,100.,100.]; pos_cost = [1.,1.,1.]; jo_cost = [10.,10.];
+    orr_cost = [100.,100.,100.]; pos_cost = [1000.,1000.,1000.]; jo_cost = [10.,10.];
     Q = Diagonal([orr_cost; pos_cost; jo_cost])
 
     δx = (target_pose .- pos)
