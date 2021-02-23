@@ -12,7 +12,6 @@ Documenter.makedocs(
     ]
 )
 
-
 deploydocs(;
     repo="https://github.com/aabouman/iLQR.jl",
     branch = "gh-pages",
