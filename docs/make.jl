@@ -3,13 +3,15 @@ using Documenter, iLQR
 
 Documenter.makedocs(
     sitename = "iLQR.jl",
+    source  = "src",
+    build   = "build",
+    clean   = true,
+    doctest = true,
     # repo = "https://github.com/aabouman/iLQR.jl",
-    # modules = [iLQR],
-    pages = [
-        "Home" => "index.md",
-        # "Documentation" => "documentation.md",
-        # "Tutorial" => "tutorial.md"
-    ]
+    modules = [iLQR],
+    pages = ["Home" => "index.md",
+             "Documentation" => "documentation.md"
+             ]
 )
 
 deploydocs(;

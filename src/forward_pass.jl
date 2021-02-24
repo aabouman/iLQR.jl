@@ -15,6 +15,7 @@ trajectory.
 
 The `dynamicsf` steps the system forward (``x_{i+1} = f(x_i, u_i)``). The
 function expects input of the form:
+
 ```julia
 function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T}) where T
     ...
@@ -23,30 +24,32 @@ end
 ```
 
 The `immediate_cost` function expect input of the form:
+
 ```julia
-function immediate_cost(x::AbstractVector{T}, u::AbstractVector{T})
+function immediate_cost(x::AbstractVector, u::AbstractVector)
     return sum(u.^2) + sum(target_state - x.^2)  # for example
 end
 ```
+
 !!! note
     It is important that the function `immediate_cost` be an explict function
     of both `x` and `u` (due to issues using `ForwardDiff` Package). If you want
     to make `immediate_cost` practically only dependent on `u` with the following
 
     ```julia
-    function immediate_cost(x::AbstractVector{T}, u::AbstractVector{T})
+    function immediate_cost(x::AbstractVector, u::AbstractVector)
         return sum(u.^2) + sum(x) * 0.0  # Only dependent on u
     end
     ```
 
 The `final_cost` function expect input of the form:
 ```julia
-function final_cost(x::AbstractVector{T})
+function final_cost(x::AbstractVector)
     return sum(target_state - x.^2)  # for example
 end
 ```
 
-Returns the optimal trajectory ``(x̅, u̅)``
+Returns the optimal trajectory ``(\bar{x}, \bar{u})``.
 """
 function forward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
                       𝛿𝐮ᶠᶠs::AbstractMatrix{T}, 𝐊s::AbstractArray{T,3},
@@ -104,7 +107,7 @@ trajectory.
 - `tol::Float64=1e-6`: Specifies the tolerance at which to consider the input
 trajectory has converged
 
-The `dynamicsf` steps the system forward (``x_{i+1} = f(x_i, u_i)``). The
+The `dynamicsf` steps the system forward, ``x_{i+1} = f(x_i, u_i)``. The
 function expects input of the form:
 ```julia
 function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T}) where T
@@ -137,7 +140,7 @@ function final_cost(x::AbstractVector{T})
 end
 ```
 
-Returns the optimal trajectory ``(x̅, u̅)``
+Returns the optimal trajectory ``(\bar{x}, \bar{u})``
 """
 function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
              dynamicsf::Function, immediate_cost::Function,
@@ -172,7 +175,7 @@ end
 @doc raw"""
 `backward_pass(x, u, dynamicsf, immediate_cost, final_cost)`
 
-Computes feedforward and feedback gains (``𝛿𝐮ᵢᶠᶠ`` and ``𝐊ᵢ``).
+Computes feedforward and feedback gains (``\delta \bf{u}_i^{ff}`` and ``\bf{K}_i``).
 
 # Arguments
 - `immediate_cost::Function`: Cost after each step

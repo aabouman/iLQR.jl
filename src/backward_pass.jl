@@ -23,7 +23,7 @@ end
 
 Returns ``(A, B)``, which are matricies defined below.
 
-``f(x_k, u_k) ≈ A x_k + B u_k``
+``f(x_k, u_k) \approx A x_k + B u_k``
 """
 function linearize_dynamics(x::AbstractVector{T}, u::AbstractVector{T},
                             dynamicsf::Function) where {T}
@@ -75,9 +75,12 @@ end
 
 Returns the matricies `(𝑞ᵢ, 𝐪ᵢ, 𝐫ᵢ, 𝐐ᵢ, 𝐏ᵢ, 𝐑ᵢ)` defined as:
 
-``𝑞ᵢ = L(xᵢ,uᵢ)``, ``𝐪ᵢ = \frac{∂L(xᵢ,uᵢ)}{∂x}``, ``𝐫ᵢ = \frac{∂L(xᵢ,uᵢ)}{∂u}``,
-``𝐐ᵢ = \frac{∂^2 L(xᵢ,uᵢ)}{∂x^2}``, ``𝐏ᵢ = \frac{∂^2 L(xᵢ,uᵢ)}{∂x ∂u}``,
-``𝐑ᵢ = \frac{∂^2 L(xᵢ,uᵢ)}{∂u^2}``
+``{\it q}_i = L(x_i, u_i)``,
+``{\bf q}_i = \frac{\partial L(x_i, u_i)}{\partial x}``,
+``{\bf r}_i = \frac{\partial L(x_i, u_i)}{\partial u}``,
+``{\bf Q}_i = \frac{\partial^2 L(x_i, u_i)}{\partial x^2}``,
+``{\bf P}_i = \frac{\partial^2 L(x_i, u_i)}{\partial x \partial u}``,
+``{\bf R}_i = \frac{\partial^2 L(x_i, u_i)}{\partial u^2}``
 """
 function immediate_cost_quadratization(x::AbstractVector{T},
                                        u::AbstractVector{T},
@@ -127,9 +130,10 @@ function final_cost(x::AbstractVector{T})
 end
 ```
 
-Returns the matricies `(𝑞ₙ, 𝐪ₙ, 𝐐ₙ)` defined as:
+Returns the matricies `({\it q}_n, {\bf q}_n, {\it Q}_n)` defined as:
 
-``𝑞ₙ = L(xₙ,uₙ)``, ``𝐪ₙ = \frac{∂L(xₙ,uₙ)}{∂x}``, ``𝐐ₙ = \frac{∂^2 L(xₙ,uₙ)}{∂x^2}``
+``{\it q}_n = L(x_n, u_n)``, ``{\bf q}_n = \frac{\partial L(x_n, u_n)}{\partial x}``,
+``{\bf Q}_n = \frac{\partial^2 L(x_n, u_n)}{\partial x^2}``
 """
 function final_cost_quadratization(x::AbstractVector{T}, final_cost::Function) where {T}
     state_size = size(x)[1];
@@ -171,8 +175,9 @@ These are used in computing feedforward and feedback gains.
 
 Returns the matricies `(𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ)` defined as:
 
-``𝐠ᵢ = 𝐫ᵢ + 𝐁ᵢ^T 𝐬ᵢ₊₁``, ``𝐆ᵢ = 𝐏ᵢ + 𝐁ᵢ^T 𝐒ᵢ₊₁ 𝐀ᵢ``,
-``𝐇ᵢ = 𝐑ᵢ + 𝐁ᵢ^T 𝐒ᵢ₊₁ 𝐁ᵢ``
+``{\bf g}_i = {\bf r}_i + {\bf B}_i^T {\bf s}_{i+1}``,
+``{\bf G}_i = {\bf P}_i + {\bf B}_i^T {\bf S}_{i+1} {\bf A}_i``,
+``{\bf H}_i = {\bf R}_i + {\bf B}_i^T {\bf S}_{i+1} {\bf B}_i``
 """
 function optimal_controller_param(𝐀ᵢ::AbstractMatrix{T}, 𝐁ᵢ::AbstractMatrix{T},
                                   𝐫ᵢ::AbstractVector{T}, 𝐏ᵢ::AbstractMatrix{T},
@@ -189,7 +194,7 @@ end
 @doc raw"""
 `feedback_parameters(𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ)`
 
-Computes feedforward and feedback gains, ``(𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ)``.
+Computes feedforward and feedback gains, ``(\delta {\bf u}_i^{ff}, {\bf K}_i)``.
 
 # Arguments
 - `𝐠ᵢ::AbstractVector{T}`: see output of [`optimal_controller_param(𝐀ᵢ, 𝐁ᵢ, 𝐫ᵢ, 𝐏ᵢ, 𝐑ᵢ, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁)`](@ref)
@@ -198,10 +203,11 @@ Computes feedforward and feedback gains, ``(𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ)``.
 
 Returns the matricies `(𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ)` defined as:
 
-``𝛿𝐮ᵢᶠᶠ = - 𝐇ᵢ^{-1} 𝐠ᵢ``, ``𝐊ᵢ = - 𝐇ᵢ^{-1} 𝐆ᵢ``
+``\delta {\bf u}_i^{ff} = - {\bf H}_i^{-1} {\bf g}_i``,
+``{\bf K}_i = - {\bf H}_i^{-1} {\bf G}_i``
 
-Because ``𝐇ᵢ`` can be poorly conditioned, the regularized inverse of the matrix
-is computed instead of the true inverse.
+Because ``{\bf H}_i`` can be poorly conditioned, the regularized inverse of the
+matrix is computed instead of the true inverse.
 """
 function feedback_parameters(𝐠ᵢ::AbstractVector{T}, 𝐆ᵢ::AbstractMatrix{T},
                              𝐇ᵢ::AbstractMatrix{T}) where {T}
@@ -235,8 +241,8 @@ end
 @doc raw"""
 `step_back(𝐀ᵢ, 𝑞ᵢ, 𝐪ᵢ, 𝐐ᵢ, 𝐠ᵢ, 𝐆ᵢ, 𝐇ᵢ, 𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ, 𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁)`
 
-Computes the rollback parameters ``𝑠ᵢ``, ``𝐬ᵢ``, and ``𝐒ᵢ`` for the next step
-backward.
+Computes the rollback parameters ``{\it s}_i``, ``{\bf s}_i``, and ``{\bf S}_i``
+for the next step backward.
 
 # Arguments
 - `𝐀ᵢ::AbstractMatrix{T}`: see output of [`linearize_dynamics(x, u, dynamicsf)`](@ref)
@@ -253,7 +259,7 @@ backward.
 - `𝐬ᵢ₊₁::AbstractVector{T}`: Rollback parameter
 - `𝐒ᵢ₊₁::AbstractMatrix{T}`: Rollback parameter
 
-Returns the next-step-back's rollback parameters, ``(𝑠ᵢ, 𝐬ᵢ, 𝐒ᵢ)``
+Returns the next-step-back's rollback parameters, ``({\it s}_i, {\bf s}_i, {\bf S}_i)``
 
 Because ``𝐇ᵢ`` can be poorly conditioned, the regularized inverse of the matrix
 is computed instead of the true inverse.
@@ -275,7 +281,7 @@ end
 @doc raw"""
 `backward_pass(x, u, dynamicsf, immediate_cost, final_cost)`
 
-Computes feedforward and feedback gains (``𝛿𝐮ᵢᶠᶠ`` and ``𝐊ᵢ``).
+Computes feedforward and feedback gains (``\delta {\bf u}_i^{ff}``, and ``{\bf K}_i``).
 
 # Arguments
 - `x::AbstractMatrix{T}`: see output of [`linearize_dynamics(x, u, dynamicsf)`](@ref)
@@ -317,7 +323,8 @@ function final_cost(x::AbstractVector{T})
 end
 ```
 
-Returns the feedback parameters ``𝛿𝐮ᵢᶠᶠᵢ``, and ``𝐊ᵢ`` for each time step ``i``
+Returns the feedback parameters ``\delta {\bf u}_i^{ff}``, and ``{\bf K}_i``
+for each time step ``i``
 """
 function backward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
                        dynamicsf::Function, immediate_cost::Function,
