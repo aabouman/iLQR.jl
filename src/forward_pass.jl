@@ -7,6 +7,7 @@ trajectory.
 # Arguments
 - `x::AbstractMatrix{T}`: see output of [`linearize_dynamics(x, u, dynamicsf)`](@ref)
 - `u::AbstractMatrix{T}`: see output of [`linearize_dynamics(x, u, dynamicsf)`](@ref)
+- `x_traj::AbstractMatrix{T}`: reference trajectory using in the cost function
 - `𝛿𝐮ᶠᶠs::AbstractMatrix{T}`: see output of [`backward_pass(x, u, dynamicsf, immediate_cost, final_cost)`](@ref)
 - `𝐊s::AbstractArray{T,3}`: see output of [`backward_pass(x, u, dynamicsf, immediate_cost, final_cost)`](@ref)
 - `dynamicsf::Function`: dynamic function, steps the system forward
@@ -104,6 +105,7 @@ trajectory.
 - `dynamicsf::Function`: dynamic function, steps the system forward
 - `immediate_cost::Function`: Cost after each step
 - `final_cost::Function`: Cost after final step
+- `x_traj::AbstractMatrix{T}=zero(x_init)`: reference trajectory using in the cost function
 - `max_iter::Int64=100`: Maximum number of forward/backward passes to make
 - `tol::Float64=1e-6`: Specifies the tolerance at which to consider the input
 trajectory has converged

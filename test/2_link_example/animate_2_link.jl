@@ -40,3 +40,5 @@ anim = @animate for t = 1:df:length(t)
 end
 save_loc = joinpath(@__DIR__,"figures/iLQR_2_link_quad_4.gif")
 gif(anim, save_loc, fps = 20)
+
+# %%
