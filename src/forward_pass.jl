@@ -5,11 +5,11 @@ Perform iterativer LQR to compute optimal input and corresponding state
 trajectory.
 
 # Arguments
-- `x::AbstractMatrix{T}`: see output of [`linearize_dynamics(x, u, dynamicsf)`](@ref)
-- `u::AbstractMatrix{T}`: see output of [`linearize_dynamics(x, u, dynamicsf)`](@ref)
-- `x_traj::AbstractMatrix{T}`: reference trajectory using in the cost function
-- `𝛿𝐮ᶠᶠs::AbstractMatrix{T}`: see output of [`backward_pass(x, u, dynamicsf, immediate_cost, final_cost)`](@ref)
-- `𝐊s::AbstractArray{T,3}`: see output of [`backward_pass(x, u, dynamicsf, immediate_cost, final_cost)`](@ref)
+- `x::AbstractMatrix`: see output of [`linearize_dynamics(x, u, dynamicsf)`](@ref)
+- `u::AbstractMatrix`: see output of [`linearize_dynamics(x, u, dynamicsf)`](@ref)
+- `x_traj::AbstractMatrix`: reference trajectory using in the cost function
+- `𝛿𝐮ᶠᶠs::AbstractMatrix`: see output of [`backward_pass(x, u, dynamicsf, immediate_cost, final_cost)`](@ref)
+- `𝐊s::AbstractArray{3}`: see output of [`backward_pass(x, u, dynamicsf, immediate_cost, final_cost)`](@ref)
 - `dynamicsf::Function`: dynamic function, steps the system forward
 - `immediate_cost::Function`: Cost after each step
 - `final_cost::Function`: Cost after final step
@@ -18,7 +18,7 @@ The `dynamicsf` steps the system forward (``x_{i+1} = f(x_i, u_i)``). The
 function expects input of the form:
 
 ```julia
-function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T}) where T
+function dynamics(xᵢ::AbstractVector, uᵢ::AbstractVector)
     ...
     return xᵢ₊₁
 end
@@ -52,16 +52,16 @@ end
 
 Returns the optimal trajectory ``(\bar{x}, \bar{u})``.
 """
-function forward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
-                      x_traj::AbstractMatrix{T},
-                      𝛿𝐮ᶠᶠs::AbstractMatrix{T}, 𝐊s::AbstractArray{T,3},
-                      prev_cost::T, dynamicsf::Function,
+function forward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{S},
+                      x_traj::AbstractMatrix,
+                      𝛿𝐮ᶠᶠs::AbstractMatrix, 𝐊s::AbstractArray{N, 3} where N,
+                      prev_cost::Real, dynamicsf::Function,
                       immediate_cost::Function, final_cost::Function
-                      ) where {T}
+                      ) where {T, S}
     M, input_size = size(u); N, state_size = size(x)
     @assert(N == M+1)
 
-    x̅ = zeros(T, N, state_size); u̅ = zeros(T, N-1, input_size)
+    x̅ = zeros(T, N, state_size); u̅ = zeros(S, N-1, input_size)
     x̅[1, :] .= x[1, :]
     α = 1.0     # Learning rate
     total_cost = total_cost_generator(x_traj, immediate_cost, final_cost)
@@ -113,7 +113,7 @@ trajectory has converged
 The `dynamicsf` steps the system forward, ``x_{i+1} = f(x_i, u_i)``. The
 function expects input of the form:
 ```julia
-function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T}) where T
+function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{S}) where {T, S}
     ...
     return xᵢ₊₁
 end
@@ -145,12 +145,12 @@ end
 
 Returns the optimal trajectory ``(\bar{x}, \bar{u})``
 """
-function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
+function fit(x_init::AbstractMatrix, u_init::AbstractMatrix,
              dynamicsf::Function, immediate_cost::Function,
              final_cost::Function;
              x_traj=zero(x_init),
              max_iter::Int64=100, tol::Float64=1e-6,
-             ) where {T}
+             )
     x̅ⁱ = x_init; u̅ⁱ = u_init
     N, state_size = size(x̅ⁱ); M, input_size = size(u̅ⁱ)
     @assert(N == M + 1, "size(x_init)[2] == size(u_init)[1], (# of states is 1 more than # of inputs in trajectory)")
@@ -179,9 +179,9 @@ function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
 end
 
 
-function total_cost_generator(x_traj::AbstractMatrix{T},
+function total_cost_generator(x_traj::AbstractMatrix,
                               immediate_cost::Function,
-                              final_cost::Function) where {T}
+                              final_cost::Function)
     function total_cost(x̅ⁱ, u̅ⁱ)
         N = size(u̅ⁱ)[1]
         sum = 0.

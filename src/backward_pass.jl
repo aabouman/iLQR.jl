@@ -5,14 +5,14 @@ linearizes the function `dynamicsf` around the point `x` and `u`.
 
 # Arguments
 - `x::AbstractVector{T}`: state at a specific step
-- `u::AbstractVector{T}`: input at a specific step
+- `u::AbstractVector{S}`: input at a specific step
 - `dynamicsf::Function`: dynamic function, steps the system forward
 
 The `dynamicsf` steps the system forward (``x_{i+1} = f(x_i, u_i)``). The
 function expects input of the form:
 
 ```julia
-function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{T}) where T
+function dynamics(xᵢ::AbstractVector{T}, uᵢ::AbstractVector{S}) where {T, S}
     ...
     return xᵢ₊₁
 end
@@ -22,12 +22,12 @@ Returns ``(A, B)``, which are matricies defined below.
 
 ``f(x_k, u_k) \approx A x_k + B u_k``
 """
-function linearize_dynamics(x::AbstractVector{T}, u::AbstractVector{T},
-                            dynamicsf::Function) where {T}
+function linearize_dynamics(x::AbstractVector{T}, u::AbstractVector{S},
+                            dynamicsf::Function) where {T, S}
     state_size = size(x)[1]; control_size = size(u)[1];
 
-    𝐀 = zeros(T, state_size, state_size)
-    𝐁 = zeros(T, state_size, control_size)
+    𝐀 = zeros(promote_type(T, S), state_size, state_size)
+    𝐁 = zeros(promote_type(T, S), state_size, control_size)
 
     # Declaring dynamics jacobian functions
     A_func(x, u) = jacobian(x -> dynamicsf(x, u), x)
@@ -80,17 +80,17 @@ Returns the matricies `(𝑞ᵢ, 𝐪ᵢ, 𝐫ᵢ, 𝐐ᵢ, 𝐏ᵢ, 𝐑ᵢ)` d
 ``{\bf R}_i = \frac{\partial^2 L(x_i, u_i)}{\partial u^2}``
 """
 function immediate_cost_quadratization(x::AbstractVector{T},
-                                       u::AbstractVector{T},
-                                       immediate_cost::Function) where {T}
+                                       u::AbstractVector{S},
+                                       immediate_cost::Function) where {T, S}
     state_size = size(x)[1]; control_size = size(u)[1];
 
     # Notation copied from ETH lecture notes
-    𝑞ᵢ = convert(T, 0.)  # Cost along path
-    𝐪ᵢ = zeros(T, state_size)  # Cost Jacobian wrt x
-    𝐫ᵢ = zeros(T, control_size)  # Cost Jacobian wrt u
-    𝐐ᵢ = zeros(T, state_size, state_size)  # Cost Hessian wrt x, x
-    𝐏ᵢ = zeros(T, control_size, state_size)  # Cost Hessian wrt u, x
-    𝐑ᵢ = zeros(T, control_size, control_size)  # Cost Hessian wrt u, u
+    𝑞ᵢ = convert(promote_type(T, S), 0.)  # Cost along path
+    𝐪ᵢ = zeros(promote_type(T, S), state_size)  # Cost Jacobian wrt x
+    𝐫ᵢ = zeros(promote_type(T, S), control_size)  # Cost Jacobian wrt u
+    𝐐ᵢ = zeros(promote_type(T, S), state_size, state_size)  # Cost Hessian wrt x, x
+    𝐏ᵢ = zeros(promote_type(T, S), control_size, state_size)  # Cost Hessian wrt u, x
+    𝐑ᵢ = zeros(promote_type(T, S), control_size, control_size)  # Cost Hessian wrt u, u
 
     # Helper jacobain functions
     ∂L∂x(x, u) = gradient(x -> immediate_cost(x, u), x)
@@ -213,9 +213,9 @@ function feedback_parameters(𝐠ᵢ::AbstractVector{T}, 𝐆ᵢ::AbstractMatrix
     # H_inv = regularized_persudo_inverse(𝐇ᵢ)
 
     n = size(𝐇ᵢ)[1]
-    H_inv = inv(𝐇ᵢ + 0.01 * I(n))
-    𝛿𝐮ᵢᶠᶠ = - H_inv * 𝐠ᵢ
-    𝐊ᵢ = - H_inv * 𝐆ᵢ
+    H = (𝐇ᵢ + 0.01 * I(n))
+    𝛿𝐮ᵢᶠᶠ = - H \ 𝐠ᵢ
+    𝐊ᵢ = - H \ 𝐆ᵢ
     return (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ)
 end
 
@@ -323,16 +323,16 @@ end
 Returns the feedback parameters ``\delta {\bf u}_i^{ff}``, and ``{\bf K}_i``
 for each time step ``i``
 """
-function backward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
+function backward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{S},
                        dynamicsf::Function, immediate_cost::Function,
-                       final_cost::Function) where {T}
+                       final_cost::Function) where {T, S}
     # Grab all dimensions
     N, state_size = size(x); M, input_size = size(u);
     @assert(N == M+1)
 
     # Initialize matricies
-    𝛿𝐮ᶠᶠs = zeros(T, N-1, input_size)
-    𝐊s = zeros(T, N-1, input_size, state_size)
+    𝛿𝐮ᶠᶠs = zeros(promote_type(T, S), N-1, input_size)
+    𝐊s = zeros(promote_type(T, S), N-1, input_size, state_size)
 
     (𝑞ₙ, 𝐪ₙ, 𝐐ₙ) = final_cost_quadratization(x[N,:], final_cost)
     (𝑠ᵢ₊₁, 𝐬ᵢ₊₁, 𝐒ᵢ₊₁) = (𝑞ₙ, 𝐪ₙ, 𝐐ₙ)
