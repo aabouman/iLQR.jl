@@ -24,18 +24,17 @@ Returns ``(A, B)``, which are matricies defined below.
 """
 function linearize_dynamics(x::AbstractVector{T}, u::AbstractVector{S},
                             dynamicsf::Function) where {T, S}
-    state_size = size(x)[1]; control_size = size(u)[1];
-
-    𝐀 = zeros(promote_type(T, S), state_size, state_size)
-    𝐁 = zeros(promote_type(T, S), state_size, control_size)
+    # state_size = size(x)[1]; control_size = size(u)[1];
+    # 𝐀 = zeros(promote_type(T, S), state_size, state_size)
+    # 𝐁 = zeros(promote_type(T, S), state_size, control_size)
 
     # Declaring dynamics jacobian functions
     A_func(x, u) = jacobian(x -> dynamicsf(x, u), x)
     B_func(x, u) = jacobian(u -> dynamicsf(x, u), u)
 
     # Computing jacobian around each point
-    𝐀 .= A_func(x, u)
-    𝐁 .= B_func(x, u)
+    𝐀 = A_func(x, u)
+    𝐁 = B_func(x, u)
 
     return (𝐀, 𝐁)
 end
@@ -82,15 +81,15 @@ Returns the matricies `(𝑞ᵢ, 𝐪ᵢ, 𝐫ᵢ, 𝐐ᵢ, 𝐏ᵢ, 𝐑ᵢ)` d
 function immediate_cost_quadratization(x::AbstractVector{T},
                                        u::AbstractVector{S},
                                        immediate_cost::Function) where {T, S}
-    state_size = size(x)[1]; control_size = size(u)[1];
+    # state_size = size(x)[1]; control_size = size(u)[1];
 
-    # Notation copied from ETH lecture notes
-    𝑞ᵢ = convert(promote_type(T, S), 0.)  # Cost along path
-    𝐪ᵢ = zeros(promote_type(T, S), state_size)  # Cost Jacobian wrt x
-    𝐫ᵢ = zeros(promote_type(T, S), control_size)  # Cost Jacobian wrt u
-    𝐐ᵢ = zeros(promote_type(T, S), state_size, state_size)  # Cost Hessian wrt x, x
-    𝐏ᵢ = zeros(promote_type(T, S), control_size, state_size)  # Cost Hessian wrt u, x
-    𝐑ᵢ = zeros(promote_type(T, S), control_size, control_size)  # Cost Hessian wrt u, u
+    # # Notation copied from ETH lecture notes
+    # 𝑞ᵢ = convert(promote_type(T, S), 0.)  # Cost along path
+    # 𝐪ᵢ = zeros(promote_type(T, S), state_size)  # Cost Jacobian wrt x
+    # 𝐫ᵢ = zeros(promote_type(T, S), control_size)  # Cost Jacobian wrt u
+    # 𝐐ᵢ = zeros(promote_type(T, S), state_size, state_size)  # Cost Hessian wrt x, x
+    # 𝐏ᵢ = zeros(promote_type(T, S), control_size, state_size)  # Cost Hessian wrt u, x
+    # 𝐑ᵢ = zeros(promote_type(T, S), control_size, control_size)  # Cost Hessian wrt u, u
 
     # Helper jacobain functions
     ∂L∂x(x, u) = gradient(x -> immediate_cost(x, u), x)
@@ -133,12 +132,11 @@ Returns the matricies `({\it q}_n, {\bf q}_n, {\it Q}_n)` defined as:
 ``{\bf Q}_n = \frac{\partial^2 L(x_n, u_n)}{\partial x^2}``
 """
 function final_cost_quadratization(x::AbstractVector{T}, final_cost::Function) where {T}
-    state_size = size(x)[1];
-
+    # state_size = size(x)[1];
     # Notation copied from ETH lecture notes
-    𝑞ₙ = convert(T, 0.)  # Cost along path
-    𝐪ₙ = zeros(T, state_size)  # Cost Jacobian wrt x
-    𝐐ₙ = zeros(T, state_size, state_size)  # Cost Hessian wrt x, x
+    # 𝑞ₙ = convert(T, 0.)  # Cost along path
+    # 𝐪ₙ = zeros(T, state_size)  # Cost Jacobian wrt x
+    # 𝐐ₙ = zeros(T, state_size, state_size)  # Cost Hessian wrt x, x
 
     # Helper jacobain functions
     ∂Φ∂x(x) = gradient(x -> final_cost(x), x)
@@ -213,9 +211,9 @@ function feedback_parameters(𝐠ᵢ::AbstractVector{T}, 𝐆ᵢ::AbstractMatrix
     # H_inv = regularized_persudo_inverse(𝐇ᵢ)
 
     n = size(𝐇ᵢ)[1]
-    H = (𝐇ᵢ + 0.01 * I(n))
-    𝛿𝐮ᵢᶠᶠ = - H \ 𝐠ᵢ
-    𝐊ᵢ = - H \ 𝐆ᵢ
+    H_reg = (𝐇ᵢ + 0.01 * I(n))
+    𝛿𝐮ᵢᶠᶠ = - H_reg \ 𝐠ᵢ
+    𝐊ᵢ = - H_reg \ 𝐆ᵢ
     return (𝛿𝐮ᵢᶠᶠ, 𝐊ᵢ)
 end
 
