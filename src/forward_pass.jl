@@ -52,6 +52,7 @@ end
 Returns the optimal trajectory ``(\bar{x}, \bar{u})``.
 """
 function forward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
+                      x_traj::AbstractMatrix{T},
                       𝛿𝐮ᶠᶠs::AbstractMatrix{T}, 𝐊s::AbstractArray{T,3},
                       prev_cost::T, dynamicsf::Function,
                       immediate_cost::Function, final_cost::Function
@@ -62,7 +63,7 @@ function forward_pass(x::AbstractMatrix{T}, u::AbstractMatrix{T},
     x̅ = zeros(T, N, state_size); u̅ = zeros(T, N-1, input_size)
     x̅[1, :] .= x[1, :]
     α = 1.0     # Learning rate
-    total_cost = total_cost_generator(immediate_cost, final_cost)
+    total_cost = total_cost_generator(x_traj, immediate_cost, final_cost)
     new_cost = 0.0
 
     while true
@@ -144,18 +145,21 @@ Returns the optimal trajectory ``(\bar{x}, \bar{u})``
 """
 function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
              dynamicsf::Function, immediate_cost::Function,
-             final_cost::Function; max_iter::Int64=100, tol::Float64=1e-6,
+             final_cost::Function;
+             x_traj=zero(x_init),
+             max_iter::Int64=100, tol::Float64=1e-6,
              ) where {T}
     x̅ⁱ = x_init; u̅ⁱ = u_init
     N, state_size = size(x̅ⁱ); M, input_size = size(u̅ⁱ)
     @assert(N == M + 1, "size(x_init)[2] == size(u_init)[1], (# of states is 1 more than # of inputs in trajectory)")
-    total_cost = total_cost_generator(immediate_cost, final_cost)
+    total_cost = total_cost_generator(x_traj, immediate_cost, final_cost)
 
     prev_cost = Inf; new_cost = NaN
     iter = 0
     for iter = 1:max_iter
         𝛿𝐮ᶠᶠs, 𝐊s = backward_pass(x̅ⁱ, u̅ⁱ, dynamicsf, immediate_cost, final_cost)
-        x̅ⁱ⁺¹, u̅ⁱ⁺¹, new_cost = forward_pass(x̅ⁱ, u̅ⁱ, 𝛿𝐮ᶠᶠs, 𝐊s, prev_cost,
+        x̅ⁱ⁺¹, u̅ⁱ⁺¹, new_cost = forward_pass(x̅ⁱ, u̅ⁱ, x_traj,
+                                            𝛿𝐮ᶠᶠs, 𝐊s, prev_cost,
                                             dynamicsf, immediate_cost,
                                             final_cost)
         println("Iteration: ", iter, "\t\tTotal Cost: ", new_cost)
@@ -172,49 +176,16 @@ function fit(x_init::AbstractMatrix{T}, u_init::AbstractMatrix{T},
     return (x̅ⁱ, u̅ⁱ)
 end
 
-@doc raw"""
-`backward_pass(x, u, dynamicsf, immediate_cost, final_cost)`
 
-Computes feedforward and feedback gains (``\delta \bf{u}_i^{ff}`` and ``\bf{K}_i``).
-
-# Arguments
-- `immediate_cost::Function`: Cost after each step
-- `final_cost::Function`: Cost after final step
-
-The `immediate_cost` function expect input of the form:
-```julia
-function immediate_cost(x::AbstractVector{T}, u::AbstractVector{T})
-    return sum(u.^2) + sum(target_state - x.^2)  # for example
-end
-```
-!!! note
-    It is important that the function `immediate_cost` be an explict function
-    of both `x` and `u` (due to issues using `ForwardDiff` Package). If you want
-    to make `immediate_cost` practically only dependent on `u` with the following
-
-    ```julia
-    function immediate_cost(x::AbstractVector{T}, u::AbstractVector{T})
-        return sum(u.^2) + sum(x) * 0.0  # Only dependent on u
-    end
-    ```
-
-The `final_cost` function expect input of the form:
-```julia
-function final_cost(x::AbstractVector{T})
-    return sum(target_state - x.^2)  # for example
-end
-```
-
-Returns a function `total_cost` which computes the total cost of a state and
-input trajectory.
-"""
-function total_cost_generator(immediate_cost::Function, final_cost::Function)
+function total_cost_generator(x_traj::AbstractMatrix{T},
+                              immediate_cost::Function,
+                              final_cost::Function) where {T}
     function total_cost(x̅ⁱ, u̅ⁱ)
         N = size(u̅ⁱ)[1]
         sum = 0.
 
         for i in 1:N
-            sum += immediate_cost(x̅ⁱ[i,:], u̅ⁱ[i,:])
+            sum += immediate_cost(x̅ⁱ[i,:] - x_traj[i,:], u̅ⁱ[i,:])
         end
         sum += final_cost(x̅ⁱ[end,:])
     end

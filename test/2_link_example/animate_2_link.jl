@@ -15,14 +15,16 @@ for i = 1:num_steps
       state_traj[i+1,:] .= dynamicsf(state_traj[i,:], input_traj[i, :])
 end
 
-
 # Build vector of time steps
 t = [0.:convert(Float64, num_steps);]
 # Fit using iLQR
 (x̅ᶠ, u̅ᶠ) = iLQR.fit(state_traj, input_traj, dynamicsf, immediate_cost,
-                    final_cost; max_iter = maximum_iterations, tol = tolerance,
+                    final_cost;
+
+                    max_iter = maximum_iterations, tol = tolerance,
                     )
 
+# %%
 println("Animating...")
 df = 10
 anim = @animate for t = 1:df:length(t)
@@ -36,5 +38,5 @@ anim = @animate for t = 1:df:length(t)
     xlims!((-2, 2))
     ylims!((-2, 2))
 end
-save_loc = joinpath(dirname(@__FILE__),"../figures/iLQR_2_link_quad_4.gif")
+save_loc = joinpath(@__DIR__,"figures/iLQR_2_link_quad_4.gif")
 gif(anim, save_loc, fps = 20)

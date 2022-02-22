@@ -1,6 +1,3 @@
-using ForwardDiff: gradient, jacobian, hessian
-using LinearAlgebra: svd, Diagonal, inv, I
-
 @doc raw"""
 `linearize_dynamics(x, u, dynamicsf)`
 
